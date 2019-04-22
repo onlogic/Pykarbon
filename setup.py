@@ -10,7 +10,7 @@ setup(
     author_email='jacob.caughfield@logicsupply.com',
     packages=['pykarbon'],
     install_requires=['pyserial'],
-    scripts=['scripts/cannit.py'],
+    #scripts=[],
     version='0.1',
     license='MIT',
     description='Tools for Karbon hardware interfaces',
