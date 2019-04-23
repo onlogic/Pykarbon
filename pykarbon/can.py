@@ -39,6 +39,7 @@ class Session():
             automon(bool, optional): Automatically monitor incoming data in the background.
         '''
         self.interface = pk.Interface('can', timeout)
+        self.pre_data = []
         self.data = []
         self.isopen = False
         self.baudrate = self.autobaud(baudrate)
@@ -208,8 +209,6 @@ class Session():
         '''Reads a single line from the port, and stores the output in self.data
 
         If no data is read from the port, then nothing is added to the data queue.
-        Additonally, if there is an action registered to the read data type, this
-        action will be executed.
 
         Returns
             The data read from the port
@@ -218,8 +217,7 @@ class Session():
         if self.isopen:
             line = self.interface.cread()[0]
             if line:
-                self.pushdata(line)
-                self.check_action(line)
+                self.pre_data.append(line)
 
         return line
 
@@ -232,11 +230,12 @@ class Session():
             The 'thread' object of this background process
         '''
 
-        bus_monitor = threading.Thread(target=self.monitor)
-        bus_monitor.start()
-        self.bgmon = bus_monitor
+        self.bgmon = threading.Thread(target=self.monitor)
+        self.bgmon.start()
 
-        return bus_monitor
+        threading.Thread(target=self.registry_service).start()
+
+        return self.bgmon
 
     def monitor(self):
         '''Watches port for can data while connection is open.
@@ -258,6 +257,23 @@ class Session():
                 retvl = "UserCancelled"
 
         return retvl
+
+    def registry_service(self):
+        '''Check if receive line has a registered action.
+
+        If the receive line does have an action, perform it, and then move the data
+        into the main data queue. Otherwise, just move the data.
+        '''
+        while self.isopen:
+            try:
+                line = self.pre_data.pop()
+                if line:
+                    self.check_action(line)
+                    self.pushdata(line)
+            except IndexError:
+                continue
+
+        return 0
 
     def check_action(self, line):
         '''Check is message has an action attached, and execute if found
