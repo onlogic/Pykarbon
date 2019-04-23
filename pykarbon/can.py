@@ -365,7 +365,8 @@ class Session():
         self.interface.__exit__(etype, evalue, etraceback)
 
     def __del__(self):
-        pass
+        if self.isopen:
+            self.close()
 
 class Reactions():
     '''A class for performing automated responses to certain can messages.
