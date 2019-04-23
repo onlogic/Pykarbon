@@ -338,7 +338,7 @@ class Session():
                 if not line:
                     break
 
-                line.strip('\n\r')
+                line = line.strip('\n\r')
 
                 line = line.replace(' ', ',')
                 datafile.write(line + "\n")
@@ -366,14 +366,24 @@ class Session():
         method.
         '''
         self.isopen = False
-        while self.bgmon.isAlive():
+
+        try:
+            if self.bgmon.isAlive():
+                sleep(.1)
+        except AttributeError:
             sleep(.001)
+
         self.interface.release()
 
     def __exit__(self, etype, evalue, etraceback):
         self.isopen = False
-        while self.bgmon.isAlive():
+
+        try:
+            if self.bgmon.isAlive():
+                sleep(.1)
+        except AttributeError:
             sleep(.001)
+
         self.interface.__exit__(etype, evalue, etraceback)
 
     def __del__(self):
