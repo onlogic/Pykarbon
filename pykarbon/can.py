@@ -13,10 +13,15 @@ class Session():
     method of sending can messages that will automatically determine frame format, type,
     and data length based only on the message id and data.
 
+    There is additional support for registering a function to certain can data ids. When the
+    interface receives a registered message, it will call the function and send the returned
+    data. This features requires running the session with automonitoring enabled.
+
     By default, the session will also try to automatically discover the bus baudrate.
 
     Attributes:
         interface: Serial interface object that has methods for reading/writing to the port.
+        pre_data: Data before it has been parsed by the registry service.
         data: Queue for holding the data read from the port
         isopen: Bool to indicate if the interface is connected
         baudrate: Reports the discovered or set baudrate
@@ -49,6 +54,8 @@ class Session():
         if automon:
             self.open()
             self.bgmonitor()
+        else:
+            self.data = self.pre_data
 
     def __enter__(self):
         if not self.isopen:
@@ -230,6 +237,9 @@ class Session():
             The 'thread' object of this background process
         '''
 
+        if not self.data:
+            self.data = []
+
         self.bgmon = threading.Thread(target=self.monitor)
         self.bgmon.start()
 
@@ -327,6 +337,8 @@ class Session():
 
                 if not line:
                     break
+
+                line.strip('\n\r')
 
                 line = line.replace(' ', ',')
                 datafile.write(line + "\n")
