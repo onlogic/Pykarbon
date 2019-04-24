@@ -39,11 +39,11 @@ run:
 
 pages:
   script:
-  # pip install sphinx sphinx-rtd-theme
-  # cd doc ; make html
-  # mv build/html/ ../public/
+  - pip install sphinx sphinx-rtd-theme
+  - cd doc ; make html
+  - mv build/html/ ../public/
   artifacts:
     paths:
-    # public
+    - public
   only:
-  # master
+  - master
