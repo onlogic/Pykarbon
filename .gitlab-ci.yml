@@ -19,19 +19,18 @@ cache:
     - venv/
 
 before_script:
-  - python -V               # Print out python version for debugging
-  - pip install virtualenv
-  - virtualenv venv
+  - python3 -V               # Print out python version for debugging
+  - virtualenv venv --python=python3
   - source venv/bin/activate
 
 test:
   script:
-  - pip install tox # Use tox
+  - pip3 install tox # Use tox
   - tox
 
 run:
   script:
-  - python setup.py bdist_wheel
+  - python3 setup.py bdist_wheel
   # run the command here
   artifacts:
     paths:
@@ -39,7 +38,7 @@ run:
 
 pages:
   script:
-  - pip install sphinx sphinx-rtd-theme
+  - pip3 install sphinx sphinx-rtd-theme
   - cd doc ; make html
   - mv build/html/ ../public/
   artifacts:
