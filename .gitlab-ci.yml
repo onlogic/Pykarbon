@@ -62,11 +62,15 @@ deploy_github:
 deploy_production:
   stage: deploy
   before_script:
-    - python setup.py sdist
+    - pip install virtualenv
+    - virtualenv venv
+    - source venv/bin/activate
   variables:
     TWINE_USERNAME: $PYPI_USER
     TWINE_PASSWORD: $PYPI_PASSWORD
   script:
+    - pip install setuptools, twine
+    - python setup.py sdist
     - twine upload dist/*
   when: manual
   only: 
