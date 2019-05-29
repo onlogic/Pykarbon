@@ -45,19 +45,35 @@ run:
   only:
     - master
 
-deploy:
+deploy_github:
+  stage: deploy
   before_script:
     # Prepare for push
-    - git remote set-url origin https://${GITHUB_USER}:${CI_PUSH_TOKEN}@github.com/onlogic/Pykarbon.git
-    - git config --global user.email ${GITLAB_USER_EMAIL}
-    - git config --global user.name ${GITLAB_USER_ID}
+    - git remote set-url origin https://$GITHUB_USER:$CI_PUSH_TOKEN@github.com/onlogic/Pykarbon.git
+    - git config --global user.email $GITLAB_USER_EMAIL
+    - git config --global user.name $GITLAB_USER_ID
   script:
     - git remote -v
-    - echo test completed
-    #- git push -u origin master
+    - git push -u origin master
   when: manual
   only:
     - master
+
+deploy_production:
+  stage: deploy
+  before_script:
+    - pip install twine
+    - python setup.py sdist
+  variables:
+    TWINE_USERNAME: $PYPI_USER
+    TWINE_PASSWORD: $PYPI_PASSWORD
+  script:
+    - twine upload dist/*
+  when: manual
+  only: 
+    - master
+
+  
 
 #pages:
 #  script:
