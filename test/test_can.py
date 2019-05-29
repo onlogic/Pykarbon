@@ -88,7 +88,7 @@ def test_autobaud():
     dev = pkc.Session()
     dev.close()
 
-    assert '800' in dev.baudrate
+    assert '8' in dev.baudrate[0] or '7' in dev.baudrate[0]
 
 def test_format_message():
     ''' Check that messages can be formatted into a dictionary correctly '''
