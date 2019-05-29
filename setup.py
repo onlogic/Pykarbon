@@ -11,7 +11,7 @@ setup(
     packages=['pykarbon'],
     install_requires=['pyserial'],
     scripts=['scripts/update_firmware.py'],
-    version='1.0.0',
+    version='1.0.1',
     license='MIT',
     description='Tools for Karbon hardware interfaces.',
     long_description=open('README.rst').read()
