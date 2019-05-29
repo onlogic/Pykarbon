@@ -108,11 +108,9 @@ class Karbon:
 
         return set_rate
 
-    def show_info(self, update_info=True):
+    def show_info(self):
         '''Updates and prints configuration information'''
-        if update_info:
-            self.terminal.update_info()
-        self.terminal.print_info()
+        self.terminal.update_info(print_info=True)
 
     def close(self):
         ''' Close both ports '''
