@@ -59,12 +59,12 @@ deploy:
   only:
     - master
 
-pages:
-  script:
-  - cd doc ; make html
-  - mv build/html/ ../public/
-  artifacts:
-    paths:
-    - public
-  only:
-  - master
+#pages:
+#  script:
+#  - cd doc ; make html
+#  - mv build/html/ ../public/
+#  artifacts:
+#    paths:
+#    - public
+#  only:
+#  - master
