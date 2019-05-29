@@ -3,7 +3,7 @@
 from time import sleep
 import threading
 
-import pykarbon.pykarbon as pk
+import pykarbon.hardware as pk
 
 class Session():
     '''Attaches to CAN serial port and allows reading/writing from the port.
@@ -25,6 +25,8 @@ class Session():
         data: Queue for holding the data read from the port
         isopen: Bool to indicate if the interface is connected
         baudrate: Reports the discovered or set baudrate
+        registry: Dict of registered DIO states and function responses
+        bgmon: Thread object of the bus background monintor
     '''
     def __init__(self, baudrate=None, timeout=.1, automon=True):
         '''Discovers hardware port name.
@@ -75,7 +77,7 @@ class Session():
     def pushdata(self, line: str):
         '''Add data to the end of the session queue.
 
-        NOTE: Does not push empty strings, and strips EoL characters.
+        NOTE: Strips EoL characters.
 
         Args:
             line: Data that will be pushed onto the queue
@@ -96,11 +98,16 @@ class Session():
         Returns:
             The discovered or set baudrate
         '''
-        set_rate = 'Not Set'
+        set_rate = None
         with pk.Interface('terminal') as term:
             if not baudrate:
                 term.cwrite('can-autobaud')
+
+                i = 0
                 set_rate = term.cread()[0].strip('\n\r')
+                while not set_rate and i < 2000:
+                    set_rate = term.cread()[0].strip('\n\r')
+                    i += 1
             else:
                 term.cwrite('set can-baudrate ' + str(baudrate))
                 set_rate = str(baudrate)
@@ -168,7 +175,7 @@ class Session():
         '''Automatically perform action upon receiving data_id
 
         Register an action that should be automatically performed when a certain data
-        id is read. By default the action will be only performed when the id is attached
+        id is read. By default the action will be performed when the id is attached
         to any frame type, and the action's returned data will be checked -- if the data
         can be formatted as a can message, it will automatically be transmitted as a reply.
 
@@ -276,7 +283,7 @@ class Session():
         '''
         while self.isopen:
             try:
-                line = self.pre_data.pop()
+                line = self.pre_data.pop(0)
                 if line:
                     self.check_action(line)
                     self.pushdata(line)

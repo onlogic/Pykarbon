@@ -4,10 +4,9 @@ Pykarbon is designed to wrap interfacing with the microntroller on the Karbon se
 with the explicit goal of being able to treat this object in a more pythonic manner. In this manner
 most serial interactions with carbon are greatly simplified, and are more versatile.
 '''
-from sys import platform as os_type
 
-import io
-import serial
+import pykarbon.can as pkc
+import pykarbon.terminal as pkt
 
 class Karbon:
     '''Handles interactions with both virtual serial ports.
@@ -16,162 +15,114 @@ class Karbon:
     The ports reporting this id are then attached to the class for easy recall and access.
 
     Attributes:
-        ports (:obj:'dict'): The two virtual serial ports enumerated by the MCU.
+        can: A pykarbon.can session object -- used to interface with karbon can bus
+        terminal: a pykarbon.terminal session object -- used to interface with karbon terminal.
     '''
 
-    def __init__(self):
-        '''Discovers the MCU virtual serial ports'''
-        self.ports = {}
-        self.get_ports()
+    def __init__(self, automon=True):
+        '''Opens a session with the two MCU virtual serial ports
 
-    @classmethod
-    def write(cls, command, port_name='terminal'):
-        '''Takes a command input and interperets it into a serial task.
+        Arguments:
+            automon: Defaults to True -- will cause can and terminal ports to auto-monitored
 
-        Args:
-            command (str): String written to serial port
-            port_name(str, optional): Select the port to write. Selects terminal by default
+        '''
+        self.can = pkc.Session(automon=automon)
+        self.can.autobaud = self.autobaud #Need to override, as we have lock on terminal
+
+        self.terminal = pkt.Session(automon=automon)
+
+    def __enter__(self):
+        self.can = self.can.__enter__()
+        self.terminal = self.terminal.__enter__()
+
+        return self
+
+    def open(self):
+        ''' Opens both ports: Only needs to be called if 'close' has been called '''
+        self.can.open()
+        self.terminal.open()
+
+    def write(self, *args):
+        '''Takes a command input and interperets it into a serial task:
+
+        If given two integer args, it will send a CAN message. If given two string args, it
+        will set a terminal parameter. If given an integer as the first arg, and a str as the
+        second arg, it will attempt to set the corrospponding digital output.
+
+        A single string argument will simply be sent to the terminal.
 
         Returns:
             None
         '''
-        Interface(port_name).cwrite(command)
+        if len(args) == 1 and isinstance(args[0], str):
+            self.terminal.write(args[0])
+        elif len(args) == 2:
+            if isinstance(args[0], int) and isinstance(args[1], int):
+                self.can.write(args[0], args[1])
+            elif isinstance(args[0], int) and isinstance(args[1], str):
+                self.terminal.set_do(args[0], args[1])
+            elif isinstance(args[0], str) and isinstance(args[1], str):
+                self.terminal.set_param(args[0], args[1])
 
-    @classmethod
-    def read(cls, port_name='terminal', nlines=1, print_output=False):
+    def read(self, port_name='terminal', print_output=False):
         '''Get the next line sent from a port
 
         Args:
             port_name (str, optional): Will read from CAN if 'can' is in the port name.
                 Reads from the terminal port by default.
-            nlines(int, optional): Number of lines to read from the port
             print_output (bool, optional): Set to false to not print read line
 
         Returns:
-            Raw string or list of raw strings of the lines read from the port
+            Raw string of the line read from the port
         '''
-        output = Interface(port_name).cread(nlines=nlines)
+        if 'terminal' in port_name.lower():
+            line = self.terminal.readline()
+        elif 'can' in port_name.lower():
+            line = self.can.readline()
 
         if print_output:
-            for line in output:
-                print(line, end='')
+            print(line)
 
-        return output
+        return line
 
-    def get_ports(self) -> dict:
-        '''Scans system serial devices and returns the two Karbon serial interfaces
+    def autobaud(self, baudrate: int) -> str:
+        '''Autodetect the bus baudrate
 
-        Returns:
-            A dictionary with the keys 'can' and 'terminal' assigned hardware port names.
-        '''
-        import serial.tools.list_ports as port_list
-        all_ports = port_list.comports()
-
-        for port, desc, hwid in sorted(all_ports):
-            if "1FC9:00A3" in hwid:
-
-                if 'win' in os_type: #Fix for windows COM ports above 10
-                    self.ports[self.check_port_kind(port)] = "\\\\.\\" + port
-                else:
-                    self.ports[self.check_port_kind(port)] = port
-
-                desc = desc # Remove pylint warning
-
-        return self.ports
-
-    @staticmethod
-    def check_port_kind(port_name: str) -> str:
-        '''Checks if port is used for CAN or as the terminal
+        If the passed argument 'baudrate' is None, the baudrate will be autodetected,
+        otherwise, the bus baudrate will be set to the passed value.
 
         Args:
-            port_name: The hardware device name.
+            baudrate: The baudrate of the bus in thousands. Set to 'None' to autodetect
 
         Returns:
-            The kind of port: 'can' or 'terminal'
+            The discovered or set baudrate
         '''
-        retvl = 'can'
+        set_rate = None
+        if not baudrate:
+            self.terminal.write('can-autobaud')
+            self.terminal.update_info()
+            set_rate = self.terminal.info['can-baudrate']['value']
+        else:
+            self.terminal.set_param('can-baudrate', str(baudrate))
+            set_rate = str(baudrate)
 
-        ser = serial.Serial(port_name, 115200, xonxoff=1, timeout=.1)
-        sio = io.TextIOWrapper(io.BufferedRWPair(ser, ser), newline='\r')
+        return set_rate
 
-        sio.write('version')
-        sio.flush()
+    def show_info(self, update_info=True):
+        '''Updates and prints configuration information'''
+        if update_info:
+            self.terminal.update_info()
+        self.terminal.print_info()
 
-        if sio.readline():
-            retvl = 'terminal'
-
-        return retvl
-
-class Interface(Karbon):
-    '''Karbon subclass interface -- controls interactions with the karbon serial interfaces.
-
-    Attributes:
-        port: The hardware name of the serial interface
-        ser: A serial object connection to the port.
-        sio: An io wrapper for the serial object.
-        multi_line_response: The number of lines returned when special commands are transmitted.
-    '''
-    def __init__(self, port_name: str, timeout=.1):
-        ''' Opens a connection with the terminal port
-
-        Args:
-            port_name: Human-readable name of serial port ("can" or "terminal")
-        '''
-        super(Interface, self).__init__()
-        self.port = self.ports[port_name]
-        self.ser = None
-        self.sio = None
-        self.multi_line_response = {"config" : 12, "status" : 5}
-        self.timeout = timeout
-
-    def claim(self):
-        '''Claims the serial interface for this instance.'''
-        self.ser = serial.Serial(self.port, 115200, xonxoff=1, timeout=self.timeout)
-        self.sio = io.TextIOWrapper(io.BufferedRWPair(self.ser, self.ser), newline='\r')
-
-    def __enter__(self):
-        self.claim()
-        return self
-
-    def cwrite(self, command: str):
-        '''Writes a command string to the serial terminal and gets the response.
-
-        Args:
-            command: Action to be executed on the mcu
-
-        Returns:
-            None
-        '''
-
-        self.sio.write(command)
-        self.sio.flush() # Send 'now'
-
-    def cread(self, nlines=1):
-        '''Reads n lines from the serial terminal.
-
-        Args:
-            nlines(int, optional): How many lines to try and read
-
-        Returns:
-            The combined output of each requested read transaction
-        '''
-        output = []
-        for line in range(0, nlines):
-            line = self.sio.readline()
-            output.append(line)
-
-        return output
-
-    def release(self):
-        '''Release the interface, and allow other applications to use this port'''
-        self.ser.close()
-        self.sio = None
-        self.ser = None
+    def close(self):
+        ''' Close both ports '''
+        self.terminal.close()
+        self.can.close()
 
     def __exit__(self, etype, evalue, etraceback):
-        self.release()
-        return True
+        self.terminal.__exit__(etype, evalue, etraceback)
+        self.can.__exit__(etype, evalue, etraceback)
 
     def __del__(self):
-        if self.ser:
-            self.release()
+        self.terminal.__del__()
+        self.can.__del__()

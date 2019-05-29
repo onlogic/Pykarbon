@@ -16,29 +16,51 @@ variables:
 cache:
   paths:
     - .cache/pip
-    - venv/
+
+stages:
+  - test
+  - run
+  - deploy
 
 before_script:
-  - python3 -V               # Print out python version for debugging
-  - virtualenv venv --python=python3
-  - source venv/bin/activate
+  - python3 -V
 
 test:
+  tags:
+    - k300
   script:
-  - pip3 install tox # Use tox
-  - tox
+  - tox # Use tox to run tests
+  only:
+  - master
 
 run:
+  tags:
+    - k300
   script:
   - python3 setup.py bdist_wheel
   # run the command here
   artifacts:
     paths:
     - dist/*.whl
+  only:
+    - master
+
+deploy:
+  before_script:
+    # Prepare for push
+    - git remote set-url origin https://${GITHUB_USER}:${CI_PUSH_TOKEN}@github.com/onlogic/Pykarbon.git
+    - git config --global user.email ${GITLAB_USER_EMAIL}
+    - git config --global user.name ${GITLAB_USER_ID}
+  script:
+    - git remote -v
+    - echo test completed
+    #- git push -u origin master
+  when: manual
+  only:
+    - master
 
 pages:
   script:
-  - pip3 install sphinx sphinx-rtd-theme
   - cd doc ; make html
   - mv build/html/ ../public/
   artifacts:
