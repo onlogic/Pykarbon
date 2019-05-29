@@ -1,0 +1,24 @@
+v1.0.0
++ Small bug-fixes
++ Prepare package for launch
++ Add tests and improve test coverage
+
+v0.2.6
++ Catch attribute error in Interface.release()
++ Override can.autobaud when using pykarbon.Karbon
+
+v0.2.5
++ Separate main hardware tools and Karbon class.
+
+v0.2
++ Add actual base tool tests
++ Add canbus tests
++ Have baudrate set to None on failure to detect
+
+v0.1.5
++ Add change log
++ Update __all__ to include terminal.py
++ Turn base Karbon read/write into context managers.
++ Better formatting of terminal configuration lines.
++ Print error messages when terminal command fails.
++ Fix update_firmware.py.
