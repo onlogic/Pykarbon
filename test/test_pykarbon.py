@@ -73,6 +73,6 @@ def test_write_generic_string():
 
 def test_show_info():
     ''' Test that we can show info '''
-    with pk.Karbon as dev:
+    with pk.Karbon() as dev:
         dev.show_info()
 
