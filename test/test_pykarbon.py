@@ -2,6 +2,8 @@
 from time import sleep
 import pykarbon.pykarbon as pk
 
+STANDARD_DELAY = .75
+
 def test_close_open():
     ''' Tests that a connection can be opened and closed '''
 
@@ -28,7 +30,7 @@ def test_can_write():
     out = ''
     with pk.Karbon() as dev:
         dev.write(0x123, 0x11223344)
-        sleep(.2)
+        sleep(STANDARD_DELAY)
         out = dev.can.popdata()
 
     assert '123 11223344' in out
@@ -38,7 +40,7 @@ def test_do_set():
     out = ''
     with pk.Karbon() as dev:
         dev.write(0, '1')
-        sleep(.1)
+        sleep(STANDARD_DELAY)
         dev.write(0, '0')
         out = dev.terminal.popdata()
 
@@ -49,7 +51,7 @@ def test_param_set():
     out = ''
     with pk.Karbon() as dev:
         dev.write('can-baudrate', '750')
-        sleep(.3)
+        sleep(STANDARD_DELAY)
         dev.terminal.update_info()
         out = dev.terminal.info['can-baudrate']
         dev.write('can-baudrate', '800')
@@ -63,7 +65,7 @@ def test_write_generic_string():
     dev = pk.Karbon(automon=False)
     dev.open()
     dev.write('version')
-    sleep(.1)
+    sleep(STANDARD_DELAY)
     out = dev.read()
 
     dev.close()
@@ -75,4 +77,3 @@ def test_show_info():
     ''' Test that we can show info '''
     with pk.Karbon() as dev:
         dev.show_info()
-
