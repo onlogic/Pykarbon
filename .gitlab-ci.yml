@@ -72,8 +72,8 @@ deploy_staging:
   only:
     refs:
       - staging
-    changes:
-      - setup.py
+    #changes:
+    #  - setup.py
   before_script:
     - pip install twine
   variables:
