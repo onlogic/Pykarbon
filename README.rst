@@ -48,7 +48,7 @@ And close our session:
 What else can I do?
 -------------------
 
-Pykarbon offers a number of tools to for automating and using Karbon series hardware interfaces. These include:
+Pykarbon offers a number of tools for automating and using Karbon series hardware interfaces. These include:
 
 - CAN and DIO background data monitoring
 - Exporting logged data to .csv
