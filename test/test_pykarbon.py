@@ -49,7 +49,7 @@ def test_param_set():
     out = ''
     with pk.Karbon() as dev:
         dev.write('can-baudrate', '750')
-        sleep(.1)
+        sleep(.3)
         dev.terminal.update_info()
         out = dev.terminal.info['can-baudrate']
         dev.write('can-baudrate', '800')
@@ -70,3 +70,9 @@ def test_write_generic_string():
 
     check = match(r"<.+v(\d\.){3}\d.+>", out)
     assert check
+
+def test_show_info():
+    ''' Test that we can show info '''
+    with pk.Karbon as dev:
+        dev.show_info()
+
