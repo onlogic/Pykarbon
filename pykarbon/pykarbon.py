@@ -110,7 +110,10 @@ class Karbon:
 
     def show_info(self):
         '''Updates and prints configuration information'''
-        self.terminal.update_info(print_info=True)
+        try:
+            self.terminal.update_info(print_info=True)
+        except TypeError:
+            self.terminal.update_info(print_info=True)
 
     def close(self):
         ''' Close both ports '''
