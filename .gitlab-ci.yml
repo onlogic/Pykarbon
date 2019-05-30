@@ -77,10 +77,10 @@ deploy_staging:
   before_script:
     - pip install twine
   variables:
-    TWINE_USERNAME: $PYPI_USER
-    TWINE_PASSWORD: $PYPI_PASSWORD
+    TWINE_USERNAME: jacob-caughfield
+    TWINE_PASSWORD: T3stPl@intext235
   script:
-    - twine upload --username $PYPI_USER --password $PYPI_PASSWORD --repository-url https://test.pypi.org/legacy/ dist/*
+    - twine upload --repository-url https://test.pypi.org/legacy/ dist/*
   tags:
     - k300
 
