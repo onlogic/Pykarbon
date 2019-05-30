@@ -2,6 +2,8 @@
 from time import sleep
 import pykarbon.can as pkc
 
+STANDARD_DELAY = .75
+
 # --------------------------------------------------------------------------------------
 ACTION_ID = 0
 ACTION_DATA = 0
@@ -120,7 +122,7 @@ def test_read_write():
     sent = dev.send_can(message)
     assert 'std 123 4 11223344 data' in sent
 
-    sleep(.1)
+    sleep(STANDARD_DELAY)
     out = dev.readline()
     assert '123 11223344' in out
 
@@ -130,7 +132,7 @@ def test_auto_read_write():
     dev = pkc.Session(baudrate='800')
     dev.write(0x123, 0x1122334455667788)
 
-    sleep(.1)
+    sleep(STANDARD_DELAY)
 
     dev.close()
 
@@ -166,7 +168,7 @@ def test_context_manager():
         assert dev.bgmon.isAlive()
 
         dev.write(0x123, 0x11223344)
-        sleep(.1)
+        sleep(STANDARD_DELAY)
 
         out = dev.popdata()
         assert '123 11223344' in out
@@ -184,7 +186,7 @@ def test_can_register():
 
     dev.pre_data.append('777 11223344')
     dev.pre_data.append('666 11223344')
-    sleep(.3)
+    sleep(STANDARD_DELAY)
     dev.close()
 
     assert ACTION_ID == 0x777
