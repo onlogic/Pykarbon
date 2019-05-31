@@ -53,6 +53,7 @@ def test_param_set():
         dev.write('can-baudrate', '750')
         sleep(STANDARD_DELAY)
         dev.terminal.update_info()
+        sleep(STANDARD_DELAY)
         out = dev.terminal.info['can-baudrate']
         dev.write('can-baudrate', '800')
 
