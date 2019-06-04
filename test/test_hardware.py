@@ -55,3 +55,35 @@ def test_context_manager():
 
     match = re.match(r"<.+v(\d\.){3}\d.+>", out[0])
     assert match
+
+def test_multiple_release():
+    ''' Ensure that is allowed to close a closed port '''
+    term = pk.Interface('terminal')
+    term.claim()
+
+    term.release()
+    term.release()
+    term.release()
+
+def test_unclaimed_read_write():
+    ''' Check that correct errors are thrown when a user tries a closed port '''
+    from pytest import raises
+    term = pk.Interface('terminal')
+
+    with raises(ConnectionError):
+        term.cwrite('version')
+
+    with raises(ConnectionError):
+        term.cread()
+
+def test_multiple_argument_writes():
+    ''' Check that buffer is cleared in such a way that multi-argument writes always succeed '''
+    test_values = ['700', '710', '720', '730', '740', '750', '800']
+    out_values = []
+    with pk.Interface('terminal') as term:
+        for value in test_values:
+            term.cwrite('set can-baudrate {}'.format(value))
+            out_values.append(term.cread()[0])
+
+    for value in out_values:
+        assert 'Error' not in value

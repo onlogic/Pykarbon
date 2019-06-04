@@ -31,11 +31,12 @@ test_dev:
     changes: # Will always run on first push of new branch
       - test/*.py
       - pykarbon/*.py
+      - tox.ini
   except:
     - master
     - staging
   script:
-    - tox # Use tox to run tests
+    - tox -e py36 # Use tox to run tests
   tags:
     - k300
 
