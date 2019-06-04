@@ -1,3 +1,8 @@
+v1.0.4
++ Add delay before updating info when terminal writes parameters
++ Fix erroneous test failures
++ Improve test coverage
+
 v1.0.0
 + Small bug-fixes
 + Prepare package for launch

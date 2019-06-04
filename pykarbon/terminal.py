@@ -247,8 +247,10 @@ class Session():
         if self.isopen:
             self.interface.cwrite('set {} {}'.format(parameter, value))
             if update:
+                sleep(.3) # Needs time to process
                 self.update_info()
             if save_config:
+                sleep(.3) # Needs time to process
                 self.interface.cwrite('save config')
         else:
             retvl = 1
@@ -311,16 +313,25 @@ class Session():
             build = build
             self.info['build']['value'] = build.strip('>').strip(' ')
         elif 'Boot' in line:
-            self.info['boot-config']['value'] = line.split(':')[1].strip(' ')
+            try:
+                self.info['boot-config']['value'] = line.split(':')[1].strip(' ')
+            except IndexError:
+                print("Unexpected response: " + line)
         elif 'Remote' in line:
-            self.info['dio-power-switch']['value'] = line.split(':')[1].strip(' ')
+            try:
+                self.info['dio-power-switch']['value'] = line.split(':')[1].strip(' ')
+            except IndexError:
+                print("Unexpected response: " + line)
         else:
             found_match = False
 
         if not found_match:
             for key in self.info:
                 if key in line.lower().replace(' ', '-'):
-                    self.info[key]['value'] = line.split(':')[1].strip(' ')
+                    try:
+                        self.info[key]['value'] = line.split(':')[1].strip(' ')
+                    except IndexError:
+                        print("Unexpected response: " + line)
 
 
         return line

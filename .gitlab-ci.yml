@@ -36,7 +36,7 @@ test_dev:
     - master
     - staging
   script:
-    - tox # Use tox to run tests
+    - tox -e py36 # Use tox to run tests
   tags:
     - k300
 
