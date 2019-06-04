@@ -46,7 +46,7 @@ def test_do_set():
 
     assert out
 
-def test_param_set():
+def test_param_set(capsys):
     ''' Check that we can set configuration parameters '''
     out = ''
     with pk.Karbon() as dev:
@@ -56,6 +56,9 @@ def test_param_set():
         out = (dev.terminal.info['can-baudrate']['value'])
         dev.write('can-baudrate', '800')
 
+    captured = capsys.readouterr()
+
+    assert 'Error' not in captured.out
     assert '750' in out
 
 def test_write_generic_string():

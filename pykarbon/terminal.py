@@ -247,11 +247,11 @@ class Session():
         if self.isopen:
             self.interface.cwrite('set {} {}'.format(parameter, value))
             if update:
-                sleep(.3) # Needs time to process
+                sleep(.1) # Needs time to process
                 self.update_info()
             if save_config:
-                sleep(.3) # Needs time to process
-                self.interface.cwrite('save config')
+                sleep(.1) # Needs time to process
+                self.interface.cwrite('save-config')
         else:
             retvl = 1
 
