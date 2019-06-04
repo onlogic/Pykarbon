@@ -1,3 +1,6 @@
+v1.0.5
++ Fix bug where parameters would not be saved on system hard-reboot
+
 v1.0.4
 + Add delay before updating info when terminal writes parameters
 + Fix erroneous test failures
