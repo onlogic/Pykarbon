@@ -46,17 +46,20 @@ def test_do_set():
 
     assert out
 
-def test_param_set():
+def test_param_set(capsys):
     ''' Check that we can set configuration parameters '''
     out = ''
     with pk.Karbon() as dev:
         dev.write('can-baudrate', '750')
+
         sleep(STANDARD_DELAY)
-        dev.terminal.update_info()
-        out = dev.terminal.info['can-baudrate']
+        out = (dev.terminal.info['can-baudrate']['value'])
         dev.write('can-baudrate', '800')
 
-    assert '750' in out['value']
+    captured = capsys.readouterr()
+
+    assert 'Error' not in captured.out
+    assert '750' in out
 
 def test_write_generic_string():
     ''' Confirm that we can write a generic string to the port '''

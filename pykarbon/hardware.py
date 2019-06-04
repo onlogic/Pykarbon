@@ -102,10 +102,11 @@ class Interface(Hardware):
         '''
 
         try:
+            self.sio.flush() # Try to clear junk
             self.sio.write(command)
-            self.sio.flush() # Send 'now'
-        except AttributeError:
-            raise Exception("Port is not claimed; must use 'claim' method before 'cwrite' method")
+            self.sio.flush() # Write NOW
+        except AttributeError as error:
+            raise ConnectionError("Port may not be claimed; see 'claim' method") from error
 
     def cread(self, nlines=1):
         '''Reads n lines from the serial terminal.
@@ -121,18 +122,17 @@ class Interface(Hardware):
             for line in range(0, nlines):
                 line = self.sio.readline()
                 output.append(line)
-        except AttributeError:
-            raise Exception("Port is not claimed; must use 'claim' method before 'cread' method")
+        except AttributeError as error:
+            raise ConnectionError("Port may not be claimed; see 'claim' method") from error
 
         return output
 
     def release(self):
         '''Release the interface, and allow other applications to use this port'''
         try:
-            if self.ser:
-                self.ser.close()
-                self.sio = None
-                self.ser = None
+            self.ser.close()
+            self.sio = None
+            self.ser = None
         except AttributeError:
             return
 
