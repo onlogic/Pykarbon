@@ -1,0 +1,9 @@
+.wy-nav-content {
+   max-width: none;
+   min-height: 100vh;
+}
+
+.document {
+    min-height: 79vh;
+    padding-bottom: 8vh;
+}
