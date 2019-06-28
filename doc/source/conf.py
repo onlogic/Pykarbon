@@ -27,6 +27,8 @@ release = '1.0.5'
 
 
 # -- General configuration ---------------------------------------------------
+# Show that index is master doc
+master_doc = 'index'
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
