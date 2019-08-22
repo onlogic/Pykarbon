@@ -190,7 +190,7 @@ class Session():
             Bus state format is digital output 0-4 space digital input 0-4. Dashes are 'don't care'
 
         Args:
-            dio_state(str) : Shorthand for the state of the dio, a dash will ignore the value of .
+            dio_state(str) : Shorthand for the state of the dio, a dash will ignore the value.
             action: The python function that will be performed.
             kwargs:
                 transition_only: Act only when a state is true by transition (Default: True)
@@ -260,37 +260,26 @@ class Session():
     def set_do(self, number, state):
         ''' Set the state of a single digital output
 
-        Just formats the number and state into a dictionary, and then calls the
-        'set_all_do' method.
+        Maps different input formats into a unified format, and then calls a write method that sets a single output.
 
         Example:
             set_do(0, True)
             set_do('two', 0)
         '''
-        set_string = []
-        set_string += self.get_previous_state().split(' ')[1]
-        try:
-            number = int(number)
-        except ValueError:
-            swap = {'zero': 0, 'one': 1, 'two': 2, 'three': 3}
-            number = swap[number]
+        states = {'zero': '-', 'one': '-', 'two': '-', 'three': '-'}
+        map_state = {0: '0', 1: '1', False: '0', True: '1', '0': '0', '1': '1'}
+        map_numbr = {0: 'zero', 1: 'one', 2: 'two', 3: 'three', 'zero': 'zero', 'one': 'one', 'two': 'two', 'three': 'three'}
 
-        try:
-            state = str(int(state))
-        except ValueError:
-            swap = {'low': '0', 'high': '1'}
-            state = swap[state]
-
-        set_string[number] = state
-
-        self.set_all_do(set_string)
-        return set_string
+        
+        states[map_numbr[number]] = map_state[state]
+        self.write('set-do {zero}{one}{two}{three}'.format(**states))
 
     def set_all_do(self, states):
         ''' Sets all digital outputs based on a list of states
 
         Arguments:
-            states (list): A list of '1' or '0' corrospponding to the state of each output.
+            states (list): A list of '1', '0', or '-' corrospponding to the state of each output.
+                Note: A '-' will skip setting the corrosponding output
 
         Example:
             set_all_do(['0', '0', '0', '0'])  -- turn all outputs off
@@ -420,36 +409,29 @@ class Session():
         '''
 
         prev_state = self.get_previous_state(-2)
+        state_map = {'1': 'high', '0': 'low'}
 
-        # Determine the state of every digital input, and if it has changed state
-        input_states = {}
-        for i in range(1, 5):
-            input_state = line[i + 4]
-            prev_state = prev_state[i + 4]
-
-            transition = False
-            if input_state not in prev_state:
-                transition = True
-
-            if '0' in input_state:
-                input_states[i] = {'state': 'low', 'trans': transition}
-            else:
-                input_states[i] = {'state': 'high', 'trans': transition}
 
         # Check registry against current state of each digital input
         for input_num in self.registry:
-            reaction = self.registry[input_num][input_states[input_num]['state']]
+            input_state = state_map[line[input_num]]
+            transition = state_map[prev_state[input_num]] != input_state
+        
+            action = self.registry[input_num].get(input_state)
+            
+            if not action:
+                continue
 
-            if reaction.transition_only and not input_states[input_num]['trans']:
-                return
+            if action.transition_only and not transition:
+                continue
 
-            if not re.match(reaction.dio_state.replace('-', '.'), line):
-                return
+            if not re.match(action.dio_state.replace('-', '.'), line):
+                continue
 
-            if reaction.run_in_background:
-                reaction.bgstart(line)
+            if action.run_in_background:
+                action.bgstart(line)
             else:
-                reaction.start(line)
+                action.start(line)
 
         return
 
@@ -458,7 +440,7 @@ class Session():
         try:
             prev_line = self.data[index]
         except IndexError:
-            prev_line = '0000 0000'
+            prev_line = '1111 0000'
 
         return prev_line
 
@@ -519,7 +501,7 @@ class Session():
         self.isopen = False
 
         try:
-            if self.bgmon.isAlive():
+            if self.bgmon.is_alive():
                 sleep(.1)
         except AttributeError:
             sleep(.001)
@@ -530,7 +512,7 @@ class Session():
         self.isopen = False
 
         try:
-            if self.bgmon.isAlive():
+            if self.bgmon.is_alive():
                 sleep(.1)
         except AttributeError:
             sleep(.001)
@@ -561,13 +543,13 @@ class Reactions():
         auto_response: If reaction will automatically reply
         set_do: Helper to set digital output state
     '''
-    def __init__(self, set_do, info, action, **kwargs):
+    def __init__(self, set_all_do, info, action, **kwargs):
         '''Init attributes
 
         Additonally sets all kwargs to default values if they are not
         explicitly specified.
         '''
-        self.set_do = set_do
+        self.set_do = set_all_do
         self.info = info
         self.action = action
 
@@ -577,9 +559,9 @@ class Reactions():
             self.dio_state = '---- ----'
 
         if 'transition_only' in kwargs:
-            self.remote_only = kwargs['transition_only']
+            self.transition_only = kwargs['transition_only']
         else:
-            self.remote_only = False
+            self.transition_only = False
 
         if 'run_in_background' in kwargs:
             self.run_in_background = kwargs['run_in_background']
