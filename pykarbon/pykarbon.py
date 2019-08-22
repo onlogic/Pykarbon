@@ -8,6 +8,7 @@ most serial interactions with carbon are greatly simplified, and are more versat
 import pykarbon.can as pkc
 import pykarbon.terminal as pkt
 
+
 class Karbon:
     '''Handles interactions with both virtual serial ports.
 
@@ -19,17 +20,17 @@ class Karbon:
         terminal: a pykarbon.terminal session object -- used to interface with karbon terminal.
     '''
 
-    def __init__(self, automon=True):
+    def __init__(self, automon=True, timeout=.01, baudrate=None):
         '''Opens a session with the two MCU virtual serial ports
 
         Arguments:
             automon: Defaults to True -- will cause can and terminal ports to auto-monitored
 
         '''
-        self.can = pkc.Session(automon=automon)
-        self.can.autobaud = self.autobaud #Need to override, as we have lock on terminal
+        self.can = pkc.Session(automon=automon, timeout=timeout, baudrate=baudrate)
+        self.can.autobaud = self.autobaud  # Need to override, as we have lock on terminal
 
-        self.terminal = pkt.Session(automon=automon)
+        self.terminal = pkt.Session(automon=automon, timeout=timeout)
 
     def __enter__(self):
         self.can = self.can.__enter__()

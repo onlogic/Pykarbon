@@ -6,6 +6,7 @@ import threading
 
 import pykarbon.hardware as pk
 
+
 class Session():
     '''Attaches to terminal serial port and allows reading/writing from the port.
 
@@ -30,7 +31,7 @@ class Session():
         registry: Dict of registered DIO states and function responses
         bgmon: Thread object of the bus background monintor
     '''
-    def __init__(self, timeout=.1, automon=True):
+    def __init__(self, timeout=.01, automon=True):
         '''Discovers hardware port name.
 
         When 'automon' is set to 'True', this object will immediately attempt to claim the terminal
@@ -50,72 +51,71 @@ class Session():
         self.data = []
         self.isopen = False
 
-        self.info = \
-        {
-            'version' :
+        self.info = {
+            'version':
                 {
                     'value': None,
-                    'desc' : 'Firmware version number.'
+                    'desc': 'Firmware version number.'
                 },
-            'build' :
+            'build':
                 {
-                    'value' : None,
-                    'desc' : 'Firmware build date.'
+                    'value': None,
+                    'desc': 'Firmware build date.'
                 },
-            'configuration' :
+            'configuration':
                 {
-                    'value' : None,
-                    'desc' : 'Current user configuration.'
+                    'value': None,
+                    'desc': 'Current user configuration.'
                 },
-            'ignition-sense' :
+            'ignition-sense':
                 {
-                    'value' : None,
-                    'desc' : 'If ignition sensing is enabled or disabled.'
+                    'value': None,
+                    'desc': 'If ignition sensing is enabled or disabled.'
                 },
-            'startup-timer' :
+            'startup-timer':
                 {
-                    'value' : None,
-                    'desc' : 'Time, in seconds, until boot after ignition on.'
+                    'value': None,
+                    'desc': 'Time, in seconds, until boot after ignition on.'
                 },
-            'shutdown-timer' :
+            'shutdown-timer':
                 {
-                    'value' : None,
-                    'desc' : 'Time, in seconds, until soft power off after ignition off.'
+                    'value': None,
+                    'desc': 'Time, in seconds, until soft power off after ignition off.'
                 },
             'hard-off-timer':
                 {
-                    'value' : None,
-                    'desc' : 'Time, in seconds, until hard power off after igntion off.'
+                    'value': None,
+                    'desc': 'Time, in seconds, until hard power off after igntion off.'
                 },
             'auto-power-on':
                 {
-                    'value' : None,
-                    'desc' : 'Force device to power on when first connected to AC power.'
+                    'value': None,
+                    'desc': 'Force device to power on when first connected to AC power.'
                 },
             'shutdown-voltage':
                 {
-                    'value' : None,
-                    'desc' : 'Voltage when device will power off to avoid battery discharge.'
+                    'value': None,
+                    'desc': 'Voltage when device will power off to avoid battery discharge.'
                 },
-            'hotplug' :
+            'hotplug':
                 {
-                    'value' : None,
-                    'desc' : 'Set if the display port outputs are hotpluggable.'
+                    'value': None,
+                    'desc': 'Set if the display port outputs are hotpluggable.'
                 },
-            'can-baudrate' :
+            'can-baudrate':
                 {
-                    'value' : None,
-                    'desc' : 'Current CAN bus baudrate.'
+                    'value': None,
+                    'desc': 'Current CAN bus baudrate.'
                 },
-            'dio-power-switch' :
+            'dio-power-switch':
                 {
-                    'value' : None,
-                    'desc' : 'Have digital inputs act as a remote power switch when device is off.'
+                    'value': None,
+                    'desc': 'Have digital inputs act as a remote power switch when device is off.'
                 },
             'boot-config':
                 {
-                    'value' : None,
-                    'desc' : 'If the current configuration will be loaded at boot.'
+                    'value': None,
+                    'desc': 'If the current configuration will be loaded at boot.'
                 }
         }
 
@@ -203,7 +203,7 @@ class Session():
         '''
 
         reaction = Reactions(self.set_all_do, [input_num, state], action, **kwargs)
-        self.registry[input_num] = {state : reaction}
+        self.registry[input_num] = {state: reaction}
 
         return reaction
 
@@ -247,10 +247,10 @@ class Session():
         if self.isopen:
             self.interface.cwrite('set {} {}'.format(parameter, value))
             if update:
-                sleep(.1) # Needs time to process
+                sleep(.1)  # Needs time to process
                 self.update_info()
             if save_config:
-                sleep(.1) # Needs time to process
+                sleep(.1)  # Needs time to process
                 self.interface.cwrite('save-config')
         else:
             retvl = 1
@@ -272,13 +272,13 @@ class Session():
         try:
             number = int(number)
         except ValueError:
-            swap = {'zero' : 0, 'one' : 1, 'two' : 2, 'three' : 3}
+            swap = {'zero': 0, 'one': 1, 'two': 2, 'three': 3}
             number = swap[number]
 
         try:
             state = str(int(state))
         except ValueError:
-            swap = {'low' : '0', 'high' : '1'}
+            swap = {'low': '0', 'high': '1'}
             state = swap[state]
 
         set_string[number] = state
@@ -296,7 +296,6 @@ class Session():
             set_all_do(['0', '0', '0', '0'])  -- turn all outputs off
         '''
         self.write("set-do {}{}{}{}".format(*states))
-
 
     def parse_line(self, line):
         ''' Parse a non-dio line into mcu configuration info '''
@@ -332,7 +331,6 @@ class Session():
                         self.info[key]['value'] = line.split(':')[1].strip(' ')
                     except IndexError:
                         print("Unexpected response: " + line)
-
 
         return line
 
@@ -434,9 +432,9 @@ class Session():
                 transition = True
 
             if '0' in input_state:
-                input_states[i] = {'state' : 'low', 'trans' : transition}
+                input_states[i] = {'state': 'low', 'trans': transition}
             else:
-                input_states[i] = {'state' : 'high', 'trans' : transition}
+                input_states[i] = {'state': 'high', 'trans': transition}
 
         # Check registry against current state of each digital input
         for input_num in self.registry:
@@ -463,7 +461,6 @@ class Session():
             prev_line = '0000 0000'
 
         return prev_line
-
 
     def storedata(self, filename: str, mode='a+'):
         '''Pops the entire queue and saves it to a csv.
@@ -543,6 +540,7 @@ class Session():
     def __del__(self):
         if self.isopen:
             self.close()
+
 
 class Reactions():
     '''A class for performing automated responses to certain dio transitions.
@@ -636,6 +634,7 @@ class Reactions():
 
         return
 
+
 def hardware_reference(device='K300'):
     '''Print useful hardware information about the device
 
@@ -648,12 +647,12 @@ def hardware_reference(device='K300'):
     '''
 
     ref_k300 = \
-    '''
+        '''
     Info: Isolated digital input/ouput. To function properly, dio should be connect to
     external power and grund.
 
     Pinout: || GND | DO_1 | DO_2 | DO_3 | DO_4 | DI_1 | DI_2 | DI_3 | DI_4 | PWR ||
-    '''
+        '''
 
     ref_dict = {'K300': ref_k300}
 

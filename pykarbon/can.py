@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 ''' Tool for running a session with the can interface '''
-from time import sleep
+from time import sleep, time
 import threading
+import re
 
 import pykarbon.hardware as pk
+
 
 class Session():
     '''Attaches to CAN serial port and allows reading/writing from the port.
@@ -28,7 +30,7 @@ class Session():
         registry: Dict of registered DIO states and function responses
         bgmon: Thread object of the bus background monintor
     '''
-    def __init__(self, baudrate=None, timeout=.1, automon=True):
+    def __init__(self, baudrate='autobaud', timeout=.01, automon=True):
         '''Discovers hardware port name.
 
         If the baudrate option is left blank, the device will instead attempt to automatically
@@ -41,17 +43,26 @@ class Session():
         the 'storedata' method -- it is good practice to occasionally purge the queue.
 
         Args:
-            baudrate(int, optional): Specify a baudrate, in thousands (500 -> 500K).
+            baudrate(int/str, optional): Specify a baudrate, in thousands (500 -> 500K).
+                None -> Disable setting baudrate altogther (use mcu stored value)
+                'autobaud' -> Attempt to automatically detect baudrate
+                100 - 1000 -> Set the baudrate to the input value, in thousands
             timeout(int, optional): Time until read/write attempts stop in seconds. (None disables)
             automon(bool, optional): Automatically monitor incoming data in the background.
         '''
         self.interface = pk.Interface('can', timeout)
+
+        self.baudrate = None
         self.pre_data = []
         self.data = []
         self.isopen = False
-        self.baudrate = self.autobaud(baudrate)
         self.bgmon = None
         self.registry = {}
+
+        if baudrate == 'autobaud':
+            self.autobaud(None)
+        elif isinstance(baudrate, int):
+            self.autobaud(baudrate)
 
         if automon:
             self.open()
@@ -85,12 +96,13 @@ class Session():
 
         self.data.append(line.strip('\n\r'))
 
-    @staticmethod
-    def autobaud(baudrate: int) -> str:
+    def autobaud(self, baudrate: int) -> str:
         '''Autodetect the bus baudrate
 
         If the passed argument 'baudrate' is None, the baudrate will be autodetected,
         otherwise, the bus baudrate will be set to the passed value.
+
+        When attempting to auto-detect baudrate, the system will time-out after 3.5 seconds.
 
         Args:
             baudrate: The baudrate of the bus in thousands. Set to 'None' to autodetect
@@ -99,20 +111,25 @@ class Session():
             The discovered or set baudrate
         '''
         set_rate = None
-        with pk.Interface('terminal') as term:
+        with pk.Interface('terminal', timeout=.001) as term:
             if not baudrate:
                 term.cwrite('can-autobaud')
 
-                i = 0
+                start = time()
+                elapsed = 0
+
                 set_rate = term.cread()[0].strip('\n\r')
-                while not set_rate and i < 2000:
+                while not set_rate and elapsed < 3.5:
                     set_rate = term.cread()[0].strip('\n\r')
-                    i += 1
+                    elapsed = time() - start
             else:
                 term.cwrite('set can-baudrate ' + str(baudrate))
                 set_rate = str(baudrate)
 
-        return set_rate
+        temp = re.search(r'\s(?P<baud>[\d]+)k', set_rate)
+        self.baudrate = temp['baud'] if temp else None
+
+        return self.baudrate
 
     @staticmethod
     def format_message(data_id, data, **kwargs):
@@ -215,9 +232,9 @@ class Session():
             can_id: The hex id of the data
             data: The hex formatted data
         '''
+
         message = self.format_message(can_id, data)
         self.send_can(message)
-
 
     def readline(self):
         '''Reads a single line from the port, and stores the output in self.data
@@ -317,7 +334,6 @@ class Session():
 
         return
 
-
     def storedata(self, filename: str, mode='a+'):
         '''Pops the entire queue and saves it to a csv.
 
@@ -396,6 +412,7 @@ class Session():
     def __del__(self):
         if self.isopen:
             self.close()
+
 
 class Reactions():
     '''A class for performing automated responses to certain can messages.
@@ -490,6 +507,7 @@ class Reactions():
 
         return
 
+
 def hardware_reference(device='K300'):
     '''Print useful hardware information about the device
 
@@ -502,14 +520,14 @@ def hardware_reference(device='K300'):
     '''
 
     ref_k300 = \
-    '''
+        '''
     Info: Compliant with CAN 2.0B. The canbus is not internally terminated; the device
     should be used with properly terminated CAN cables/bus. The termination resistors
     are required to match the nominal impedance of the cable. To meet ISO 11898, this
     resistance should be 120 Ohms.
 
     Pinout: || GND | CAN_LOW | CAN_HIGH ||
-    '''
+        '''
 
     ref_dict = {'K300': ref_k300}
 
