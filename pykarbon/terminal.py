@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 ''' Tools for sending commands to the microcontroller, as well as using the DIO '''
-from time import sleep
+from time import sleep, time
 import re
 import threading
 
@@ -47,6 +47,7 @@ class Session():
             automon(bool, optional): Automatically monitor incoming data in the background.
         '''
         self.interface = pk.Interface('terminal', timeout)
+
         self.pre_data = []
         self.data = []
         self.isopen = False
@@ -116,6 +117,11 @@ class Session():
                 {
                     'value': None,
                     'desc': 'If the current configuration will be loaded at boot.'
+                },
+            'voltage':
+                {
+                    'value': None,
+                    'desc': 'The last-read system input voltage'
                 }
         }
 
@@ -213,9 +219,12 @@ class Session():
         top_bot = top_bot.rjust(37, '-')
         print(top_bot)
         for key in self.info:
-            temp_val = self.info[key]['value'][0:10].ljust(12, ' ')
             temp_key = key.ljust(18, ' ')
-            print("+  {}|  {}+".format(temp_key, temp_val))
+            try:
+                temp_val = self.info[key]['value'][0:10].ljust(12, ' ')
+                print("+  {}|  {}+".format(temp_key, temp_val))
+            except TypeError:
+                pass
         print(top_bot)
 
     def update_info(self, print_info=False):
@@ -228,6 +237,7 @@ class Session():
         if self.isopen:
             self.interface.cwrite('version')
             self.interface.cwrite('config')
+            # Don't update voltage b/c of version limitations
             if print_info:
                 sleep(1)
                 self.print_info()
@@ -260,7 +270,8 @@ class Session():
     def set_do(self, number, state):
         ''' Set the state of a single digital output
 
-        Maps different input formats into a unified format, and then calls a write method that sets a single output.
+        Maps different input formats into a unified format, and then calls a write method that sets
+        a single output.
 
         Example:
             set_do(0, True)
@@ -268,9 +279,9 @@ class Session():
         '''
         states = {'zero': '-', 'one': '-', 'two': '-', 'three': '-'}
         map_state = {0: '0', 1: '1', False: '0', True: '1', '0': '0', '1': '1'}
-        map_numbr = {0: 'zero', 1: 'one', 2: 'two', 3: 'three', 'zero': 'zero', 'one': 'one', 'two': 'two', 'three': 'three'}
+        map_numbr = {0: 'zero', 1: 'one', 2: 'two', 3: 'three', 'zero': 'zero',
+                     'one': 'one', 'two': 'two', 'three': 'three'}
 
-        
         states[map_numbr[number]] = map_state[state]
         self.write('set-do {zero}{one}{two}{three}'.format(**states))
 
@@ -322,6 +333,27 @@ class Session():
                         print("Unexpected response: " + line)
 
         return line
+
+    def update_voltage(self, timeout=2):
+        ''' Update the system input voltage
+
+        Arguments:
+            timeout (optional): Set how long, in seconds to wait for voltage readout.
+        '''
+        old_voltage = self.info['voltage']['value']
+        self.info['voltage']['value'] = None
+        self.write('get-voltage')
+
+        start = time()
+        elapsed = 0
+        while not self.info['voltage']['value'] and elapsed < timeout:
+            elapsed = time() - start
+
+        if not self.info['voltage']['value']:
+            self.info['voltage']['value'] = old_voltage
+            return "WARNING: Did not update voltage! Last read: " + str(old_voltage)
+        else:
+            return self.info['voltage']['value']
 
     def write(self, command):
         ''' Write an arbitrary string to the serial terminal '''
@@ -411,14 +443,13 @@ class Session():
         prev_state = self.get_previous_state(-2)
         state_map = {'1': 'high', '0': 'low'}
 
-
         # Check registry against current state of each digital input
         for input_num in self.registry:
             input_state = state_map[line[input_num]]
             transition = state_map[prev_state[input_num]] != input_state
-        
+
             action = self.registry[input_num].get(input_state)
-            
+
             if not action:
                 continue
 
