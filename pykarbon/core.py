@@ -1,4 +1,48 @@
-''' A set of core functions for when you don't need anything fancy '''
+''' A set of core functions for when you don't need anything fancy.
+
+Examples:
+
+    Print firmware version:
+
+    .. code-block:: python
+
+        import pykarbon.core as pkcore
+
+        with pkcore.Terminal() as dev:
+            dev.print_command('version')
+
+    Read can messages:
+
+    .. code-block:: python
+
+        import pykarbon.core as pkcore
+
+        with pkcore.Can() as dev:
+            dev.sniff()
+
+Note:
+
+    The two exposed classes, :class:`Terminal` and :class:`Can`, may be used within context
+    managers, but are also able to use inhereted methods from :class:`pykarbon.hardware.Interface`
+    to claim and release ports. This can be usefull when you want to use a port for the duration
+    of your application.
+
+    Example:
+
+        .. code-block:: python
+
+            import pykarbon.core as pkcore:
+
+            dev = pkcore.Terminal()
+            dev.claim()
+
+            dev.set_high(0)  # Set digital output zero high
+
+            # Some code here, occasionally using device
+
+            dev.set_low(0)  # Return digital output zero to low state
+            dev.release()
+'''
 from time import time as mt
 import re
 
@@ -6,20 +50,26 @@ import pykarbon.hardware as pk
 
 
 class Terminal(pk.Interface):
-    ''' Exposes methods for blocking read/write control of the serial terminal '''
+    ''' Exposes methods for blocking read/write control of the serial terminal
+
+    pykarbon.core.Terminal is a subclass of pykarbon.hardware.Interface('terminal', timeout=.01).
+    It uses a simplified, blocking, method for reading device information and setting digital
+    output states. Digital input events will not be automatically logged, so a polling approach
+    should be implemented while waiting for an input event.
+
+
+    Arguments:
+        timeout (float, optional): The maximum amount of time, in seconds, that functions will
+            block while waiting for a response.
+        max_poll (int, optional): The hard maximum on number of times the system will poll with
+            receiving any response. Puts a hard-cap on timeout.
+
+    Attributes:
+        voltage (float): The last read system voltage, initialized to 0
+    '''
 
     def __init__(self, timeout=.05, max_poll=100):
-        ''' Initialize the terminal: claim the interface and initialize parameters
-
-        Arguments:
-            timeout (float, optional): The maximum amount of time, in seconds, that functions will
-                block while waiting for a response.
-            max_poll (int, optional): The hard maximum on number of times the system will poll with
-                receiving any response. Puts a hard-cap on timeout.
-
-        Parameters:
-            voltage (float): The last read system voltage, initialized to 0
-        '''
+        ''' Initialize the terminal: claim the interface and initialize parameter'''
 
         super().__init__('terminal', timeout=.01)
         self.poll_times = min([int(timeout / .01), max_poll])
@@ -144,14 +194,18 @@ class Terminal(pk.Interface):
 
 
 class Can(pk.Interface):
-    ''' Exposes methods for blocking read/write control of the serial terminal '''
+    ''' Exposes methods for blocking read/write control of the serial terminal
+
+    pykarbon.core.Can is a subclass of pykarbon.hardware.Interface('can', timeout=.01). It does not
+    log and monitor bus events in background, and logging messages is a blocking task. However, it
+    can be very usefull when you are simply trying to diagnose or monitor bus messages.
+
+    Arguments:
+        messages(list): List of read messages
+    '''
 
     def __init__(self):
-        ''' Initialize the terminal: claim the interface and initialize parameters
-
-        Parameters:
-            messages(list): List of read messages
-        '''
+        ''' Initialize the terminal: claim the interface and initialize parameters '''
 
         super().__init__('can', timeout=.01)
 
@@ -203,7 +257,12 @@ class Can(pk.Interface):
         return newtime, message
 
     def sniff(self):
-        ''' Read messages and print, until stopped. Messages will be saved'''
+        ''' Read messages and print, until stopped. Messages will be saved
+
+        Additionally logs time delta between received messages, alongside id and data.
+        Outputs are additionally saved in dictionary format to self.messages, in the order
+        that they are recieved.
+        '''
         print("Listening for CAN messages...")
         print(" ----------------------------------------------")
         print("| Delta      | Id         | Data               |")

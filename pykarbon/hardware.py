@@ -1,4 +1,26 @@
-''' Discovery and control of hardware interfaces. '''
+''' Discovery and control of hardware interfaces.
+
+You can use this module when you want things to go as fast as possible, or when you just need serial
+read/write hooks for your own application.
+
+Example:
+
+    .. code-block:: python
+
+        import pykarbon.hardware as pkh
+
+        with pkh.Interface('terminal') as dev:
+            dev.cwrite('version')
+            line = ''
+            while not line:
+                line = dev.cread()[0].strip('\\n\\r') # Strip termination, only reading one line.
+
+        print(line)
+
+
+    This will discover and open a connection with the serial terminal interface on the MCU. It then
+    asks the microntroller to report it's firmware version before polling for the response.
+'''
 from sys import platform as os_type
 
 import io

@@ -1,3 +1,9 @@
+v1.1.0
++ Add pykarbon.core module
++ Add support for reading input voltage
++ Fix bug in pykarbon.terminal reactions not triggering
++ Improve and add documentation on rtd. 
+
 v1.0.5
 + Fix bug where parameters would not be saved on system hard-reboot
 

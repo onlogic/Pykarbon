@@ -14,7 +14,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('../..'))
 
-#graphviz_dot = "C:\\Program Files (x86)\\Graphviz2.38\\bin\\dot.exe"
+# graphviz_dot = "C:\\Program Files (x86)\\Graphviz2.38\\bin\\dot.exe"
 
 # -- Project information -----------------------------------------------------
 
@@ -23,7 +23,7 @@ copyright = '2019, Logic Supply'
 author = 'Jacob Caughfield'
 
 # The full version, including alpha/beta/rc tags
-release = '1.0.5'
+release = '1.1.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -37,7 +37,7 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.coverage',
     'sphinx.ext.napoleon',
-    #'sphinx_automodapi.automodapi',
+    # 'sphinx_automodapi.automodapi',
     'sphinx.ext.doctest'
 ]
 
@@ -70,5 +70,7 @@ html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
 
 # Overwrite sections of CSS
+
+
 def setup(app):
-   app.add_css_file("custom.css")
+    app.add_css_file("custom.css")

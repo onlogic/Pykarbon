@@ -1,6 +1,7 @@
 ===============
 Pykarbon Module
 ===============
+For the full rundown, read `the rest of the docs <https://pykarbon.readthedocs.io/en/latest/>`_.
 
 -----------
 What is it?
@@ -27,11 +28,11 @@ Getting started with pykarbon takes only a few minutes:
 - Open up a terminal, and run ``pip install pykarbon``
 
   + On some systems you may need to run as admin, or use the ``--user`` flag
-  
+
 - Launch a python shell with ``python``
 
   + Usually linux users do not have write access to serial ports; try ``sudo python``
-  
+
 - Import pykarbon with ``import pykarbon.pykarbon as pk``
 - And finally create a control object using ``dev = pk.Karbon()``
 
@@ -57,7 +58,7 @@ Pykarbon offers a number of tools for automating and using Karbon series hardwar
   + CAN data IDs
   + Digital Input Events
   + DIO Bus States (Allows partial states)
-    
+
 - Automated can message response to registered IDs
 - Automated setting of Digital Output states
 - Automatic CAN baudrate detection
@@ -67,7 +68,7 @@ Pykarbon offers a number of tools for automating and using Karbon series hardwar
   + Power timing configurations
   + Low battery shutdown voltage
   + Etc.
-    
+
 - Firmware update
 
 Additonally, as Pykarbon's CAN and Terminal sessions must connect to device serial ports, functionality has been added
@@ -77,12 +78,9 @@ to allow running these sessions using a context manager:
 
     import pykarbon.pykarbon as pk
     import pykarbon.can as pkc
-    
+
     with pk.Karbon() as dev:
         dev.show_info()
-    
+
     with pkc.Session() as dev:
         dev.write(0x123, 0x11223344)
-    
-
-
