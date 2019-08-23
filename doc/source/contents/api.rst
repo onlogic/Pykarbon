@@ -2,31 +2,42 @@
 API
 ===
 
--------------------
-Getting the Details
--------------------
+.. _pykarbon.pykarbon:
 
-pykarbon.pykarbon
-^^^^^^^^^^^^^^^^^
+pykarbon
+--------
 
 .. automodule:: pykarbon.pykarbon
     :members:
 
-pykarbon.can
-^^^^^^^^^^^^^^^^^
+.. _pykarbon.core:
+
+core
+----
+
+.. automodule:: pykarbon.core
+    :members:
+
+.. _pykarbon.can:
+
+can
+---
 
 .. automodule:: pykarbon.can
     :members:
 
+.. _pykarbon.terminal:
 
-pykarbon.terminal
-^^^^^^^^^^^^^^^^^
+terminal
+--------
 
 .. automodule:: pykarbon.terminal
     :members:
 
-pykarbon.hardware
-^^^^^^^^^^^^^^^^^
+.. _pykarbon.hardware:
+
+hardware
+--------
 
 .. automodule:: pykarbon.hardware
     :members:

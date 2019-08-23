@@ -1,10 +1,26 @@
 # -*- coding: utf-8 -*-
-''' Tools for sending commands to the microcontroller, as well as using the DIO '''
-from time import sleep
+''' Tools for sending commands to the microcontroller, as well as using the DIO
+
+Example:
+
+    .. code-block:: python
+
+        import pykarbon.terminal as pkt
+
+        with pkt.Session() as dev:
+            dev.update_info(print_info=True) # Update and print configuration info
+
+            dev.set_do(0, True) # Set digital output zero high
+
+    This snippet will update and print the microntrollers configuration information, and then set
+    digital output zero high.
+'''
+from time import sleep, time
 import re
 import threading
 
 import pykarbon.hardware as pk
+
 
 class Session():
     '''Attaches to terminal serial port and allows reading/writing from the port.
@@ -21,8 +37,20 @@ class Session():
     Digital IO events will be recorded in the data queues, while configuration information will
     overwite the 'info' dictionary.
 
+    Args:
+        timeout(int, optional): Time until read attempts stop in seconds. (None disables)
+        automon(bool, optional): Automatically monitor incoming data in the background.
+
+    When 'automon' is set to 'True', this object will immediately attempt to claim the terminal
+    connection that it discovers. Assuming the connection can be claimed, the session will then
+    start monitoring all incoming data in the background.
+
+    This data is stored in the the session's 'data' attribute, and can be popped from the queue
+    using the 'popdata' method. Additionally, the entire queue may be purged to a csv file using
+    the 'storedata' method -- it is good practice to occasionally purge the queue.
+
     Attributes:
-        interface: Serial interface object that has methods for reading/writing to the port.
+        interface: :class:`pykarbon.hardware.Interface`
         pre_data: Data before it has been parsed by the registry service.
         data: Queue for holding the data read from the port
         isopen: Bool to indicate if the interface is connected
@@ -30,92 +58,84 @@ class Session():
         registry: Dict of registered DIO states and function responses
         bgmon: Thread object of the bus background monintor
     '''
-    def __init__(self, timeout=.1, automon=True):
-        '''Discovers hardware port name.
-
-        When 'automon' is set to 'True', this object will immediately attempt to claim the terminal
-        connection that it discovers. Assuming the connection can be claimed, the session will then
-        start monitoring all incoming data in the background.
-
-        This data is stored in the the session's 'data' attribute, and can be popped from the queue
-        using the 'popdata' method. Additionally, the entire queue may be purged to a csv file using
-        the 'storedata' method -- it is good practice to occasionally purge the queue.
-
-        Args:
-            timeout(int, optional): Time until read attempts stop in seconds. (None disables)
-            automon(bool, optional): Automatically monitor incoming data in the background.
-        '''
+    def __init__(self, timeout=.01, automon=True):
+        '''Discovers hardware port name. '''
         self.interface = pk.Interface('terminal', timeout)
+
         self.pre_data = []
         self.data = []
         self.isopen = False
 
-        self.info = \
-        {
-            'version' :
+        self.info = {
+            'version':
                 {
                     'value': None,
-                    'desc' : 'Firmware version number.'
+                    'desc': 'Firmware version number.'
                 },
-            'build' :
+            'build':
                 {
-                    'value' : None,
-                    'desc' : 'Firmware build date.'
+                    'value': None,
+                    'desc': 'Firmware build date.'
                 },
-            'configuration' :
+            'configuration':
                 {
-                    'value' : None,
-                    'desc' : 'Current user configuration.'
+                    'value': None,
+                    'desc': 'Current user configuration.'
                 },
-            'ignition-sense' :
+            'ignition-sense':
                 {
-                    'value' : None,
-                    'desc' : 'If ignition sensing is enabled or disabled.'
+                    'value': None,
+                    'desc': 'If ignition sensing is enabled or disabled.'
                 },
-            'startup-timer' :
+            'startup-timer':
                 {
-                    'value' : None,
-                    'desc' : 'Time, in seconds, until boot after ignition on.'
+                    'value': None,
+                    'desc': 'Time, in seconds, until boot after ignition on.'
                 },
-            'shutdown-timer' :
+            'shutdown-timer':
                 {
-                    'value' : None,
-                    'desc' : 'Time, in seconds, until soft power off after ignition off.'
+                    'value': None,
+                    'desc': 'Time, in seconds, until soft power off after ignition off.'
                 },
             'hard-off-timer':
                 {
-                    'value' : None,
-                    'desc' : 'Time, in seconds, until hard power off after igntion off.'
+                    'value': None,
+                    'desc': 'Time, in seconds, until hard power off after igntion off.'
                 },
             'auto-power-on':
                 {
-                    'value' : None,
-                    'desc' : 'Force device to power on when first connected to AC power.'
+                    'value': None,
+                    'desc': 'Force device to power on when first connected to AC power.'
                 },
             'shutdown-voltage':
                 {
-                    'value' : None,
-                    'desc' : 'Voltage when device will power off to avoid battery discharge.'
+                    'value': None,
+                    'desc': 'Voltage when device will power off to avoid battery discharge.'
                 },
-            'hotplug' :
+            'hotplug':
                 {
-                    'value' : None,
-                    'desc' : 'Set if the display port outputs are hotpluggable.'
+                    'value': None,
+                    'desc': 'Set if the display port outputs are hotpluggable.'
                 },
-            'can-baudrate' :
+            'can-baudrate':
                 {
-                    'value' : None,
-                    'desc' : 'Current CAN bus baudrate.'
+                    'value': None,
+                    'desc': 'Current CAN bus baudrate.'
                 },
-            'dio-power-switch' :
+            'dio-power-switch':
                 {
-                    'value' : None,
-                    'desc' : 'Have digital inputs act as a remote power switch when device is off.'
+                    'value': None,
+                    'desc': 'Have digital inputs act as a remote power switch when device is off.'
                 },
             'boot-config':
                 {
-                    'value' : None,
-                    'desc' : 'If the current configuration will be loaded at boot.'
+                    'value': None,
+                    'desc': 'If the current configuration will be loaded at boot.'
+                },
+            'voltage':
+                {
+                    'value': None,
+                    'desc': 'The last-read system input voltage'
                 }
         }
 
@@ -162,12 +182,15 @@ class Session():
         first transitions to a state -- subsequent bus reads will be ignored:
 
         Example:
-            register(1, 'low', action)
+            >>> Session.register(1, 'low', action)
 
-            Input 1 : 1 --> 0 (Execute Action)
-            Input 1 : 0 --> 0 (Do nothing)
-            Input 1 : 0 --> 1 (Do nothing)
-            Input 1 : 1 --> 0 (Execute Action)
+            Input 1 : 1 --> 0   (*Execute Action*)
+
+            Input 1 : 0 --> 0   (*Do nothing*)
+
+            Input 1 : 0 --> 1   (*Do nothing*)
+
+            Input 1 : 1 --> 0   (*Execute Action*)
 
         Actions should be a python function, which will be automatically wrapped in a
         pykarbon.terminal.Reactions object by this function. When the passed action is called
@@ -179,18 +202,21 @@ class Session():
         not be executed.
 
         Example:
-            register(1, 'high', action, dio_state='---0 ---1')
+            >>> Session.register(1, 'high', action, dio_state='---0 ---1')
 
-            Input 1 : 0 --> 1, Bus State: 0011 1111 (Do nothing)
-            Input 1 : 1 --> 1, Bus State: 0000 1111 (Do nothing)
-            Input 1 : 1 --> 0, Bus State: 0000 1111 (Do nothing)
-            Input 1 : 0 --> 1, Bus State: 0000 1111 (Execute Action)
+            Input 1 : 0 --> 1, Bus State: 0011 1111   (*Do nothing*)
+
+            Input 1 : 1 --> 1, Bus State: 0000 1111   (*Do nothing*)
+
+            Input 1 : 1 --> 0, Bus State: 0000 1111   (*Do nothing*)
+
+            Input 1 : 0 --> 1, Bus State: 0000 1111   (*Execute Action*)
 
         Note:
             Bus state format is digital output 0-4 space digital input 0-4. Dashes are 'don't care'
 
         Args:
-            dio_state(str) : Shorthand for the state of the dio, a dash will ignore the value of .
+            dio_state(str) : Shorthand for the state of the dio, a dash will ignore the value.
             action: The python function that will be performed.
             kwargs:
                 transition_only: Act only when a state is true by transition (Default: True)
@@ -203,7 +229,7 @@ class Session():
         '''
 
         reaction = Reactions(self.set_all_do, [input_num, state], action, **kwargs)
-        self.registry[input_num] = {state : reaction}
+        self.registry[input_num] = {state: reaction}
 
         return reaction
 
@@ -213,9 +239,12 @@ class Session():
         top_bot = top_bot.rjust(37, '-')
         print(top_bot)
         for key in self.info:
-            temp_val = self.info[key]['value'][0:10].ljust(12, ' ')
             temp_key = key.ljust(18, ' ')
-            print("+  {}|  {}+".format(temp_key, temp_val))
+            try:
+                temp_val = self.info[key]['value'][0:10].ljust(12, ' ')
+                print("+  {}|  {}+".format(temp_key, temp_val))
+            except TypeError:
+                pass
         print(top_bot)
 
     def update_info(self, print_info=False):
@@ -228,6 +257,7 @@ class Session():
         if self.isopen:
             self.interface.cwrite('version')
             self.interface.cwrite('config')
+            # Don't update voltage b/c of version limitations
             if print_info:
                 sleep(1)
                 self.print_info()
@@ -247,10 +277,10 @@ class Session():
         if self.isopen:
             self.interface.cwrite('set {} {}'.format(parameter, value))
             if update:
-                sleep(.1) # Needs time to process
+                sleep(.1)  # Needs time to process
                 self.update_info()
             if save_config:
-                sleep(.1) # Needs time to process
+                sleep(.1)  # Needs time to process
                 self.interface.cwrite('save-config')
         else:
             retvl = 1
@@ -260,43 +290,32 @@ class Session():
     def set_do(self, number, state):
         ''' Set the state of a single digital output
 
-        Just formats the number and state into a dictionary, and then calls the
-        'set_all_do' method.
+        Maps different input formats into a unified format, and then calls a write method that sets
+        a single output.
 
         Example:
-            set_do(0, True)
-            set_do('two', 0)
+            >>> set_do(0, True)
+            >>> set_do('two', 0)
         '''
-        set_string = []
-        set_string += self.get_previous_state().split(' ')[1]
-        try:
-            number = int(number)
-        except ValueError:
-            swap = {'zero' : 0, 'one' : 1, 'two' : 2, 'three' : 3}
-            number = swap[number]
+        states = {'zero': '-', 'one': '-', 'two': '-', 'three': '-'}
+        map_state = {0: '0', 1: '1', False: '0', True: '1', '0': '0', '1': '1'}
+        map_numbr = {0: 'zero', 1: 'one', 2: 'two', 3: 'three', 'zero': 'zero',
+                     'one': 'one', 'two': 'two', 'three': 'three'}
 
-        try:
-            state = str(int(state))
-        except ValueError:
-            swap = {'low' : '0', 'high' : '1'}
-            state = swap[state]
-
-        set_string[number] = state
-
-        self.set_all_do(set_string)
-        return set_string
+        states[map_numbr[number]] = map_state[state]
+        self.write('set-do {zero}{one}{two}{three}'.format(**states))
 
     def set_all_do(self, states):
         ''' Sets all digital outputs based on a list of states
 
         Arguments:
-            states (list): A list of '1' or '0' corrospponding to the state of each output.
+            states (list): A list of '1', '0', or '-' corrospponding to the state of each output.
+                Note: A '-' will skip setting the corrosponding output
 
         Example:
-            set_all_do(['0', '0', '0', '0'])  -- turn all outputs off
+            >>> set_all_do(['0', '0', '0', '0'])  # turn all outputs off
         '''
         self.write("set-do {}{}{}{}".format(*states))
-
 
     def parse_line(self, line):
         ''' Parse a non-dio line into mcu configuration info '''
@@ -333,8 +352,28 @@ class Session():
                     except IndexError:
                         print("Unexpected response: " + line)
 
-
         return line
+
+    def update_voltage(self, timeout=2):
+        ''' Update the system input voltage
+
+        Arguments:
+            timeout (optional): Set how long, in seconds to wait for voltage readout.
+        '''
+        old_voltage = self.info['voltage']['value']
+        self.info['voltage']['value'] = None
+        self.write('get-voltage')
+
+        start = time()
+        elapsed = 0
+        while not self.info['voltage']['value'] and elapsed < timeout:
+            elapsed = time() - start
+
+        if not self.info['voltage']['value']:
+            self.info['voltage']['value'] = old_voltage
+            return "WARNING: Did not update voltage! Last read: " + str(old_voltage)
+        else:
+            return self.info['voltage']['value']
 
     def write(self, command):
         ''' Write an arbitrary string to the serial terminal '''
@@ -422,36 +461,28 @@ class Session():
         '''
 
         prev_state = self.get_previous_state(-2)
-
-        # Determine the state of every digital input, and if it has changed state
-        input_states = {}
-        for i in range(1, 5):
-            input_state = line[i + 4]
-            prev_state = prev_state[i + 4]
-
-            transition = False
-            if input_state not in prev_state:
-                transition = True
-
-            if '0' in input_state:
-                input_states[i] = {'state' : 'low', 'trans' : transition}
-            else:
-                input_states[i] = {'state' : 'high', 'trans' : transition}
+        state_map = {'1': 'high', '0': 'low'}
 
         # Check registry against current state of each digital input
         for input_num in self.registry:
-            reaction = self.registry[input_num][input_states[input_num]['state']]
+            input_state = state_map[line[input_num]]
+            transition = state_map[prev_state[input_num]] != input_state
 
-            if reaction.transition_only and not input_states[input_num]['trans']:
-                return
+            action = self.registry[input_num].get(input_state)
 
-            if not re.match(reaction.dio_state.replace('-', '.'), line):
-                return
+            if not action:
+                continue
 
-            if reaction.run_in_background:
-                reaction.bgstart(line)
+            if action.transition_only and not transition:
+                continue
+
+            if not re.match(action.dio_state.replace('-', '.'), line):
+                continue
+
+            if action.run_in_background:
+                action.bgstart(line)
             else:
-                reaction.start(line)
+                action.start(line)
 
         return
 
@@ -460,10 +491,9 @@ class Session():
         try:
             prev_line = self.data[index]
         except IndexError:
-            prev_line = '0000 0000'
+            prev_line = '1111 0000'
 
         return prev_line
-
 
     def storedata(self, filename: str, mode='a+'):
         '''Pops the entire queue and saves it to a csv.
@@ -522,7 +552,7 @@ class Session():
         self.isopen = False
 
         try:
-            if self.bgmon.isAlive():
+            if self.bgmon.is_alive():
                 sleep(.1)
         except AttributeError:
             sleep(.001)
@@ -533,7 +563,7 @@ class Session():
         self.isopen = False
 
         try:
-            if self.bgmon.isAlive():
+            if self.bgmon.is_alive():
                 sleep(.1)
         except AttributeError:
             sleep(.001)
@@ -544,6 +574,7 @@ class Session():
         if self.isopen:
             self.close()
 
+
 class Reactions():
     '''A class for performing automated responses to certain dio transitions.
 
@@ -552,7 +583,11 @@ class Reactions():
     outputs will be set.
 
     Example:
-        Example action response: ['0', '1', '1', '0']
+        >>> ['0', '1', '1', '0'] # Example action response
+
+    Note:
+        When manually building reactions, you will need to pass in a pointer to the set_all_do
+        function of a claimed interface.
 
     Attributes:
         info: The input number and state that trigger this reaction
@@ -563,13 +598,13 @@ class Reactions():
         auto_response: If reaction will automatically reply
         set_do: Helper to set digital output state
     '''
-    def __init__(self, set_do, info, action, **kwargs):
+    def __init__(self, set_all_do, info, action, **kwargs):
         '''Init attributes
 
         Additonally sets all kwargs to default values if they are not
         explicitly specified.
         '''
-        self.set_do = set_do
+        self.set_do = set_all_do
         self.info = info
         self.action = action
 
@@ -579,9 +614,9 @@ class Reactions():
             self.dio_state = '---- ----'
 
         if 'transition_only' in kwargs:
-            self.remote_only = kwargs['transition_only']
+            self.transition_only = kwargs['transition_only']
         else:
-            self.remote_only = False
+            self.transition_only = False
 
         if 'run_in_background' in kwargs:
             self.run_in_background = kwargs['run_in_background']
@@ -636,6 +671,7 @@ class Reactions():
 
         return
 
+
 def hardware_reference(device='K300'):
     '''Print useful hardware information about the device
 
@@ -648,12 +684,12 @@ def hardware_reference(device='K300'):
     '''
 
     ref_k300 = \
-    '''
+        '''
     Info: Isolated digital input/ouput. To function properly, dio should be connect to
     external power and grund.
 
     Pinout: || GND | DO_1 | DO_2 | DO_3 | DO_4 | DI_1 | DI_2 | DI_3 | DI_4 | PWR ||
-    '''
+        '''
 
     ref_dict = {'K300': ref_k300}
 

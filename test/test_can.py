@@ -1,12 +1,15 @@
 ''' Testing the can tools. Assumes the Karbon has all can messages echoed'''
 from time import sleep
 import pykarbon.can as pkc
+import re
 
 STANDARD_DELAY = .75
 
 # --------------------------------------------------------------------------------------
 ACTION_ID = 0
 ACTION_DATA = 0
+
+
 def action_with_args(hex_id, hex_data):
     ''' Action called by CAN registry service where data is passed '''
     global ACTION_ID
@@ -15,15 +18,17 @@ def action_with_args(hex_id, hex_data):
     ACTION_ID = hex_id
     ACTION_DATA = hex_data
 
+
 def action_no_args():
     ''' Action called by CAN registry service where no data is passed '''
-    return {'id' : 0x111, 'data': 0x22}
+    return {'id': 0x111, 'data': 0x22}
 
 # -------------------------------------------------------------------------------------
 
+
 def test_open_close():
     ''' Check the port can be opened and closed '''
-    dev = pkc.Session(baudrate='800', automon=False)
+    dev = pkc.Session(baudrate=800, automon=False)
 
     assert not dev.isopen
 
@@ -35,9 +40,10 @@ def test_open_close():
 
     assert not dev.isopen
 
+
 def test_push_pop():
     ''' Confirm that data is pushed and popped from queue correctly '''
-    dev = pkc.Session(baudrate='800', automon=False)
+    dev = pkc.Session(baudrate=800, automon=False)
 
     assert not dev.data
 
@@ -57,9 +63,10 @@ def test_push_pop():
     assert not dev.data
     assert '34 445566' in out
 
+
 def test_automon_start_stop():
     ''' Check that automatic port monitoring will be correctly started and stopped '''
-    dev = pkc.Session(baudrate='800')
+    dev = pkc.Session(baudrate=800)
 
     assert dev.isopen
     assert dev.bgmon.isAlive()
@@ -69,10 +76,11 @@ def test_automon_start_stop():
     assert not dev.isopen
     assert not dev.bgmon.isAlive()
 
+
 def test_automon_restart():
     ''' Check that automonitoring can be stopped and restarted '''
 
-    dev = pkc.Session(baudrate='800')
+    dev = pkc.Session(baudrate=800)
 
     dev.close()
 
@@ -84,18 +92,22 @@ def test_automon_restart():
 
     dev.close()
 
+
 def test_autobaud():
     ''' Check that autobaudrate correctly discovers the bus baudrate '''
 
     dev = pkc.Session()
+    sleep(4)
+
     dev.close()
 
-    assert 'S' in dev.baudrate[0]
+    assert re.match(r'[\d]+', dev.baudrate)
+
 
 def test_format_message():
     ''' Check that messages can be formatted into a dictionary correctly '''
 
-    dev = pkc.Session(baudrate='800', automon=False)
+    dev = pkc.Session(baudrate=800, automon=False)
 
     message = dev.format_message(0x123, 0x11223344)
     expected = {'format': 'std', 'id': '123', 'length': 4, 'data': '11223344', 'type': 'data'}
@@ -112,9 +124,10 @@ def test_format_message():
 
     assert message == expected
 
+
 def test_read_write():
     ''' Check that can is able to read and write '''
-    dev = pkc.Session(baudrate='800', automon=False)
+    dev = pkc.Session(baudrate=800, automon=False)
     message = {'format': 'std', 'id': '123', 'length': 4, 'data': '11223344', 'type': 'data'}
 
     dev.open()
@@ -122,14 +135,18 @@ def test_read_write():
     sent = dev.send_can(message)
     assert 'std 123 4 11223344 data' in sent
 
-    sleep(STANDARD_DELAY)
-    out = dev.readline()
+    for i in range(0, 50):
+        out = dev.readline()
+        if out:
+            break
+
+    dev.close()
     assert '123 11223344' in out
 
 
 def test_auto_read_write():
     ''' Confirm that reading and writing still works when automonitoring '''
-    dev = pkc.Session(baudrate='800')
+    dev = pkc.Session(baudrate=800)
     dev.write(0x123, 0x1122334455667788)
 
     sleep(STANDARD_DELAY)
@@ -139,10 +156,11 @@ def test_auto_read_write():
     out = dev.popdata()
     assert '123 1122334455667788' in out
 
+
 def test_storedata():
     ''' Test that we are able to save our data to a csv '''
     from os import remove
-    dev = pkc.Session(baudrate='800', automon=False)
+    dev = pkc.Session(baudrate=800, automon=False)
 
     line_one = '123 112233'
     line_two = '456 445566'
@@ -160,6 +178,7 @@ def test_storedata():
 
     remove('test.csv')
 
+
 def test_context_manager():
     ''' Test that we can use can session in a context manager '''
 
@@ -173,10 +192,11 @@ def test_context_manager():
         out = dev.popdata()
         assert '123 11223344' in out
 
+
 def test_can_register():
     ''' Test that we can register and perform actions '''
 
-    dev = pkc.Session(baudrate='800', automon=True)
+    dev = pkc.Session(baudrate=800, automon=True)
 
     dev.register(0x777, action_with_args)
     dev.register(0x666, action_no_args)

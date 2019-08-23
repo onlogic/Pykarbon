@@ -1,9 +1,29 @@
 # -*- coding: utf-8 -*-
-''' Tool for running a session with the can interface '''
-from time import sleep
+''' Tool for running a session with the can interface.
+
+Example:
+
+    .. code-block:: python
+
+        import pykarbon.can as pkc
+        from time import sleep
+
+        with pkc.Session() as dev:
+            dev.write(0x123, 0x11223344)  # Send a message
+
+            sleep(5)  # Your code here!
+
+            dev.storedata('can_messages')  # Save messages that we receive while we waited
+
+    Lets us autodetect the can bus baudrate, write data to the can bus, wait for some messages to
+    be receive, and finally save those messages to can_messages.csv
+'''
+from time import sleep, time
 import threading
+import re
 
 import pykarbon.hardware as pk
+
 
 class Session():
     '''Attaches to CAN serial port and allows reading/writing from the port.
@@ -19,8 +39,30 @@ class Session():
 
     By default, the session will also try to automatically discover the bus baudrate.
 
+    Arguments:
+        baudrate (int/str, optional):
+
+            `None` -> Disable setting baudrate altogther (use mcu stored value)
+
+            `'autobaud'` -> Attempt to automatically detect baudrate
+
+            `100 - 1000` -> Set the baudrate to the input value, in thousands
+
+        timeout (int, optional): Time until read/write attempts stop in seconds. (None disables)
+        automon (bool, optional): Automatically monitor incoming data in the background.
+
+
+    If the baudrate option is left blank, the device will instead attempt to automatically
+    detect the baudrate of the can-bus. When 'automon' is set to 'True', this object will
+    immediately attempt to claim the CAN connection that it discovers. Assuming the connection
+    can be claimed, the session will then start monitoring all incoming data in the background.
+
+    This data is stored in the the session's 'data' attribute, and can be popped from the queue
+    using the 'popdata' method. Additionally, the entire queue may be purged to a csv file using
+    the 'storedata' method -- it is good practice to occasionally purge the queue.
+
     Attributes:
-        interface: Serial interface object that has methods for reading/writing to the port.
+        interface: :class:`pykarbon.hardware.Interface`
         pre_data: Data before it has been parsed by the registry service.
         data: Queue for holding the data read from the port
         isopen: Bool to indicate if the interface is connected
@@ -28,30 +70,21 @@ class Session():
         registry: Dict of registered DIO states and function responses
         bgmon: Thread object of the bus background monintor
     '''
-    def __init__(self, baudrate=None, timeout=.1, automon=True):
-        '''Discovers hardware port name.
-
-        If the baudrate option is left blank, the device will instead attempt to automatically
-        detect the baudrate of the can-bus. When 'automon' is set to 'True', this object will
-        immediately attempt to claim the CAN connection that it discovers. Assuming the connection
-        can be claimed, the session will then start monitoring all incoming data in the background.
-
-        This data is stored in the the session's 'data' attribute, and can be popped from the queue
-        using the 'popdata' method. Additionally, the entire queue may be purged to a csv file using
-        the 'storedata' method -- it is good practice to occasionally purge the queue.
-
-        Args:
-            baudrate(int, optional): Specify a baudrate, in thousands (500 -> 500K).
-            timeout(int, optional): Time until read/write attempts stop in seconds. (None disables)
-            automon(bool, optional): Automatically monitor incoming data in the background.
-        '''
+    def __init__(self, baudrate='autobaud', timeout=.01, automon=True):
+        '''Discovers hardware port name.'''
         self.interface = pk.Interface('can', timeout)
+
+        self.baudrate = None
         self.pre_data = []
         self.data = []
         self.isopen = False
-        self.baudrate = self.autobaud(baudrate)
         self.bgmon = None
         self.registry = {}
+
+        if baudrate == 'autobaud':
+            self.autobaud(None)
+        elif isinstance(baudrate, int):
+            self.autobaud(baudrate)
 
         if automon:
             self.open()
@@ -85,12 +118,13 @@ class Session():
 
         self.data.append(line.strip('\n\r'))
 
-    @staticmethod
-    def autobaud(baudrate: int) -> str:
+    def autobaud(self, baudrate: int) -> str:
         '''Autodetect the bus baudrate
 
         If the passed argument 'baudrate' is None, the baudrate will be autodetected,
         otherwise, the bus baudrate will be set to the passed value.
+
+        When attempting to auto-detect baudrate, the system will time-out after 3.5 seconds.
 
         Args:
             baudrate: The baudrate of the bus in thousands. Set to 'None' to autodetect
@@ -99,20 +133,25 @@ class Session():
             The discovered or set baudrate
         '''
         set_rate = None
-        with pk.Interface('terminal') as term:
+        with pk.Interface('terminal', timeout=.001) as term:
             if not baudrate:
                 term.cwrite('can-autobaud')
 
-                i = 0
+                start = time()
+                elapsed = 0
+
                 set_rate = term.cread()[0].strip('\n\r')
-                while not set_rate and i < 2000:
+                while not set_rate and elapsed < 3.5:
                     set_rate = term.cread()[0].strip('\n\r')
-                    i += 1
+                    elapsed = time() - start
             else:
                 term.cwrite('set can-baudrate ' + str(baudrate))
                 set_rate = str(baudrate)
 
-        return set_rate
+        temp = re.search(r'\s(?P<baud>[\d]+)k', set_rate)
+        self.baudrate = temp['baud'] if temp else None
+
+        return self.baudrate
 
     @staticmethod
     def format_message(data_id, data, **kwargs):
@@ -126,9 +165,12 @@ class Session():
             data_id(int): Data id of the message, in hex
             data(int): Message data, in hex -- if 'None', the device will send a remote frame.
             **kwargs:
-                'format': Use standard or extended frame data id ('std' or 'ext')
-                'length': Length of data to be transmitted, in bytes (11223344 -> 4)
-                'type': Type of frame ('remote' or 'data')
+
+                *format*: Use standard or extended frame data id ('std' or 'ext')
+
+                *length*: Length of data to be transmitted, in bytes (11223344 -> 4)
+
+                *type*: Type of frame ('remote' or 'data')
         '''
 
         message = {'format': 'std', 'id': data_id, 'length': 0, 'data': data, 'type': 'data'}
@@ -184,11 +226,15 @@ class Session():
         Reactions will try to pass it the hex id and data as the first and second positional
         arguments. If thrown a TypeError, it will call the action without any arguments.
 
-        NOTE: If the frame is a remote request frame, the passed data will be 'remote' instead
-        of an int!
+        Example:
+            >>> Session.register(0x123, action)
+
+        Note:
+            If the frame is a remote request frame, the passed data will be 'remote' instead
+            of an int!
 
         Args:
-            data_id(int): The hex data_id that the action will be registered to
+            data_id: The hex data_id that the action will be registered to
             action: The python function that will be performed.
             kwargs:
                 remote_only: Respond only to remote request frames (Default: False)
@@ -215,9 +261,9 @@ class Session():
             can_id: The hex id of the data
             data: The hex formatted data
         '''
+
         message = self.format_message(can_id, data)
         self.send_can(message)
-
 
     def readline(self):
         '''Reads a single line from the port, and stores the output in self.data
@@ -296,7 +342,7 @@ class Session():
         '''Check is message has an action attached, and execute if found
 
         Args:
-            Can message formatted as [id] [data]
+            line: Can message formatted as [id] [data]
         '''
         try:
             data_id, message = line.strip('\n\r').split(' ')
@@ -316,7 +362,6 @@ class Session():
                 reaction.start(message)
 
         return
-
 
     def storedata(self, filename: str, mode='a+'):
         '''Pops the entire queue and saves it to a csv.
@@ -397,6 +442,7 @@ class Session():
         if self.isopen:
             self.close()
 
+
 class Reactions():
     '''A class for performing automated responses to certain can messages.
 
@@ -405,7 +451,7 @@ class Reactions():
     id, then the reaction will respond with the originating frame's id and
     then returned data.
 
-    Example:
+    Note:
         Example action response: {'id': 0x123, 'data': 0x11223344}
 
     Attributes:
@@ -490,6 +536,7 @@ class Reactions():
 
         return
 
+
 def hardware_reference(device='K300'):
     '''Print useful hardware information about the device
 
@@ -502,14 +549,14 @@ def hardware_reference(device='K300'):
     '''
 
     ref_k300 = \
-    '''
+        '''
     Info: Compliant with CAN 2.0B. The canbus is not internally terminated; the device
     should be used with properly terminated CAN cables/bus. The termination resistors
     are required to match the nominal impedance of the cable. To meet ISO 11898, this
     resistance should be 120 Ohms.
 
     Pinout: || GND | CAN_LOW | CAN_HIGH ||
-    '''
+        '''
 
     ref_dict = {'K300': ref_k300}
 

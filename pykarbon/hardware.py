@@ -1,8 +1,31 @@
-''' Discovery and control of hardware interfaces. '''
+''' Discovery and control of hardware interfaces.
+
+You can use this module when you want things to go as fast as possible, or when you just need serial
+read/write hooks for your own application.
+
+Example:
+
+    .. code-block:: python
+
+        import pykarbon.hardware as pkh
+
+        with pkh.Interface('terminal') as dev:
+            dev.cwrite('version')
+            line = ''
+            while not line:
+                line = dev.cread()[0].strip('\\n\\r') # Strip termination, only reading one line.
+
+        print(line)
+
+
+    This will discover and open a connection with the serial terminal interface on the MCU. It then
+    asks the microntroller to report it's firmware version before polling for the response.
+'''
 from sys import platform as os_type
 
 import io
 import serial
+
 
 class Hardware:
     ''' Has methods for performing various hardware tasks: includes port discovery, etc.
@@ -28,12 +51,12 @@ class Hardware:
         for port, desc, hwid in sorted(all_ports):
             if "1FC9:00A3" in hwid:
 
-                if 'win' in os_type: #Fix for windows COM ports above 10
+                if 'win' in os_type:  # Fix for windows COM ports above 10
                     self.ports[self.check_port_kind(port)] = "\\\\.\\" + port
                 else:
                     self.ports[self.check_port_kind(port)] = port
 
-                desc = desc # Remove pylint warning
+                desc = desc  # Remove pylint warning
 
         return self.ports
 
@@ -48,17 +71,21 @@ class Hardware:
             The kind of port: 'can' or 'terminal'
         '''
         retvl = 'can'
+        # TODO: This will likely never error-out
+        try:
+            ser = serial.Serial(port_name, 115200, xonxoff=1, timeout=.01)
+            sio = io.TextIOWrapper(io.BufferedRWPair(ser, ser), newline='\r')
 
-        ser = serial.Serial(port_name, 115200, xonxoff=1, timeout=.1)
-        sio = io.TextIOWrapper(io.BufferedRWPair(ser, ser), newline='\r')
+            sio.write('version')
+            sio.flush()
 
-        sio.write('version')
-        sio.flush()
-
-        if sio.readline():
-            retvl = 'terminal'
+            if sio.readline():
+                retvl = 'terminal'
+        except serial.serialutil.SerialException:
+            pass
 
         return retvl
+
 
 class Interface(Hardware):
     '''Hardware subclass interface -- controls interactions with the karbon serial interfaces.
@@ -69,7 +96,7 @@ class Interface(Hardware):
         sio: An io wrapper for the serial object.
         multi_line_response: The number of lines returned when special commands are transmitted.
     '''
-    def __init__(self, port_name: str, timeout=.1):
+    def __init__(self, port_name: str, timeout=.01):
         ''' Opens a connection with the terminal port
 
         Args:
@@ -79,7 +106,7 @@ class Interface(Hardware):
         self.port = self.ports[port_name]
         self.ser = None
         self.sio = None
-        self.multi_line_response = {"config" : 12, "status" : 5}
+        self.multi_line_response = {"config": 12, "status": 5}
         self.timeout = timeout
 
     def claim(self):
@@ -102,9 +129,9 @@ class Interface(Hardware):
         '''
 
         try:
-            self.sio.flush() # Try to clear junk
+            self.sio.flush()  # Try to clear junk
             self.sio.write(command)
-            self.sio.flush() # Write NOW
+            self.sio.flush()  # Write NOW
         except AttributeError as error:
             raise ConnectionError("Port may not be claimed; see 'claim' method") from error
 

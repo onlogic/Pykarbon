@@ -3,10 +3,31 @@
 Pykarbon is designed to wrap interfacing with the microntroller on the Karbon series in an object,
 with the explicit goal of being able to treat this object in a more pythonic manner. In this manner
 most serial interactions with carbon are greatly simplified, and are more versatile.
+
+Note:
+
+    :class:`pykarbon.pykarbon`'s only class, Karbon, will claim and use both microntroller
+    interfaces. Addtionally, the full featuresets of both :class:`pykarbon.terminal.Session` and
+    :class:`pykarbon.can.Session` are accessable via :attr:`Karbon.terminal` and
+    :attr:`Karbon.can` respectively
+
+Example:
+
+    .. code-block:: python
+
+        import pykarbon.pykarbon as pk
+
+        with pk.Karbon() as dev:
+            dev.write(0x123, 0x11223344)  # Send a message over the can interface
+            dev.can.data  # List of receive can messages
+
+            # Karbon.write uses input length and types to determine what action to perform!
+            dev.write(0, '1')  # Set digital output zero high
 '''
 
 import pykarbon.can as pkc
 import pykarbon.terminal as pkt
+
 
 class Karbon:
     '''Handles interactions with both virtual serial ports.
@@ -19,17 +40,17 @@ class Karbon:
         terminal: a pykarbon.terminal session object -- used to interface with karbon terminal.
     '''
 
-    def __init__(self, automon=True):
+    def __init__(self, automon=True, timeout=.01, baudrate=None):
         '''Opens a session with the two MCU virtual serial ports
 
         Arguments:
             automon: Defaults to True -- will cause can and terminal ports to auto-monitored
 
         '''
-        self.can = pkc.Session(automon=automon)
-        self.can.autobaud = self.autobaud #Need to override, as we have lock on terminal
+        self.can = pkc.Session(automon=automon, timeout=timeout, baudrate=baudrate)
+        self.can.autobaud = self.autobaud  # Need to override, as we have lock on terminal
 
-        self.terminal = pkt.Session(automon=automon)
+        self.terminal = pkt.Session(automon=automon, timeout=timeout)
 
     def __enter__(self):
         self.can = self.can.__enter__()

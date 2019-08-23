@@ -1,8 +1,10 @@
 ''' Tests covering the integrated pykarbon module '''
-from time import sleep
+from time import sleep, time
+import re
 import pykarbon.pykarbon as pk
 
 STANDARD_DELAY = .75
+
 
 def test_close_open():
     ''' Tests that a connection can be opened and closed '''
@@ -17,12 +19,27 @@ def test_close_open():
     assert not dev.can.isopen
     assert not dev.can.isopen
 
+
 def test_context_manager():
     ''' Tests that we can use pykarbon as a context managed system '''
 
     with pk.Karbon() as dev:
         assert dev.can.isopen
         assert dev.terminal.isopen
+
+
+def test_context_manager_time():
+    ''' Test that the context manager can be opened and used in a reasonable timeframe '''
+    start = time()
+    with pk.Karbon() as dev:
+        dev.show_info()
+        out = dev.terminal.info['version']['value']
+
+    end = time() - start
+
+    assert end < 12
+    assert re.match(r'(v)?(\d\.){3}\d', out)
+
 
 def test_can_write():
     ''' Test that we can write to the can bus '''
@@ -35,6 +52,7 @@ def test_can_write():
 
     assert '123 11223344' in out
 
+
 def test_do_set():
     ''' Test that we can set digital outputs '''
     out = ''
@@ -46,10 +64,11 @@ def test_do_set():
 
     assert out
 
+
 def test_param_set(capsys):
     ''' Check that we can set configuration parameters '''
     out = ''
-    with pk.Karbon() as dev:
+    with pk.Karbon(baudrate=None) as dev:
         dev.write('can-baudrate', '750')
 
         sleep(STANDARD_DELAY)
@@ -60,6 +79,7 @@ def test_param_set(capsys):
 
     assert 'Error' not in captured.out
     assert '750' in out
+
 
 def test_write_generic_string():
     ''' Confirm that we can write a generic string to the port '''
@@ -75,6 +95,7 @@ def test_write_generic_string():
 
     check = match(r"<.+v(\d\.){3}\d.+>", out)
     assert check
+
 
 def test_show_info():
     ''' Test that we can show info '''
