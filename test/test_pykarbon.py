@@ -68,7 +68,7 @@ def test_do_set():
 def test_param_set(capsys):
     ''' Check that we can set configuration parameters '''
     out = ''
-    with pk.Karbon() as dev:
+    with pk.Karbon(baudrate=None) as dev:
         dev.write('can-baudrate', '750')
 
         sleep(STANDARD_DELAY)
