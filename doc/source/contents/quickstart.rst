@@ -8,11 +8,11 @@ Prerequisites
 
 Before running through this guide, make sure you have a couple of things ready:
 
-- A Karbon_ series computer.
+- *A Karbon_ series computer.*
 - `Python 3`_ downloaded and installed on the system.
 
     + Make sure you add Python to your path if installing on Windows
-- An internet connection on the target K300
+- An internet connection on the target Karbon
 
 
 ------------
@@ -41,17 +41,20 @@ in Ubuntu. Now you're just a few commands away from talking with your hardware:
 .. code-block:: python
 
     # Import the module
-    >>> import pykarbon.terminal as pkt
+    import pykarbon.core as pkcore
 
-    # Start a session
-    >>> dev = pkt.Session()
+    # Open a terminal session and print out your firmware version
+    with pkcore.Terminal() as dev:
+        dev.print_command('version')
 
-    # Print out configuration information
-    >>> dev.update_info(print_info=True)
+    # Open an can session and start listening for packets
+    with pkcore.Can() as dev:
+        dev.sniff()
 
-    # Close the session and release the interface
-    >>> dev.close()
+In the example above, we used :ref:`pykarbon.core` as a simple, and basic, interface tool. More
+advanced and useful features can be found by using the dedicated :ref:`pykarbon.can` and
+:ref:`pykarbon.terminal` modules. You can read more about them, and see some examples in the API.
 
 
-.. _Karbon: https://www.logicsupply.com/k300/
+.. _Karbon: https://www.logicsupply.com/catalogsearch/result/?q=Karbon
 .. _Python 3: https://www.python.org/downloads/

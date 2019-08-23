@@ -1,5 +1,23 @@
 # -*- coding: utf-8 -*-
-''' Tool for running a session with the can interface '''
+''' Tool for running a session with the can interface.
+
+Example:
+
+    .. code-block:: python
+
+        import pykarbon.can as pkc
+        from time import sleep
+
+        with pkc.Session() as dev:
+            dev.write(0x123, 0x11223344)  # Send a message
+
+            sleep(5)  # Your code here!
+
+            dev.storedata('can_messages')  # Save messages that we receive while we waited
+
+    Lets us autodetect the can bus baudrate, write data to the can bus, wait for some messages to
+    be receive, and finally save those messages to can_messages.csv
+'''
 from time import sleep, time
 import threading
 import re
@@ -21,8 +39,30 @@ class Session():
 
     By default, the session will also try to automatically discover the bus baudrate.
 
+    Arguments:
+        baudrate (int/str, optional):
+
+            `None` -> Disable setting baudrate altogther (use mcu stored value)
+
+            `'autobaud'` -> Attempt to automatically detect baudrate
+
+            `100 - 1000` -> Set the baudrate to the input value, in thousands
+
+        timeout (int, optional): Time until read/write attempts stop in seconds. (None disables)
+        automon (bool, optional): Automatically monitor incoming data in the background.
+
+
+    If the baudrate option is left blank, the device will instead attempt to automatically
+    detect the baudrate of the can-bus. When 'automon' is set to 'True', this object will
+    immediately attempt to claim the CAN connection that it discovers. Assuming the connection
+    can be claimed, the session will then start monitoring all incoming data in the background.
+
+    This data is stored in the the session's 'data' attribute, and can be popped from the queue
+    using the 'popdata' method. Additionally, the entire queue may be purged to a csv file using
+    the 'storedata' method -- it is good practice to occasionally purge the queue.
+
     Attributes:
-        interface: Serial interface object that has methods for reading/writing to the port.
+        interface: :class:`pykarbon.hardware.Interface`
         pre_data: Data before it has been parsed by the registry service.
         data: Queue for holding the data read from the port
         isopen: Bool to indicate if the interface is connected
@@ -31,25 +71,7 @@ class Session():
         bgmon: Thread object of the bus background monintor
     '''
     def __init__(self, baudrate='autobaud', timeout=.01, automon=True):
-        '''Discovers hardware port name.
-
-        If the baudrate option is left blank, the device will instead attempt to automatically
-        detect the baudrate of the can-bus. When 'automon' is set to 'True', this object will
-        immediately attempt to claim the CAN connection that it discovers. Assuming the connection
-        can be claimed, the session will then start monitoring all incoming data in the background.
-
-        This data is stored in the the session's 'data' attribute, and can be popped from the queue
-        using the 'popdata' method. Additionally, the entire queue may be purged to a csv file using
-        the 'storedata' method -- it is good practice to occasionally purge the queue.
-
-        Args:
-            baudrate(int/str, optional): Specify a baudrate, in thousands (500 -> 500K).
-                None -> Disable setting baudrate altogther (use mcu stored value)
-                'autobaud' -> Attempt to automatically detect baudrate
-                100 - 1000 -> Set the baudrate to the input value, in thousands
-            timeout(int, optional): Time until read/write attempts stop in seconds. (None disables)
-            automon(bool, optional): Automatically monitor incoming data in the background.
-        '''
+        '''Discovers hardware port name.'''
         self.interface = pk.Interface('can', timeout)
 
         self.baudrate = None
@@ -143,9 +165,12 @@ class Session():
             data_id(int): Data id of the message, in hex
             data(int): Message data, in hex -- if 'None', the device will send a remote frame.
             **kwargs:
-                'format': Use standard or extended frame data id ('std' or 'ext')
-                'length': Length of data to be transmitted, in bytes (11223344 -> 4)
-                'type': Type of frame ('remote' or 'data')
+
+                *format*: Use standard or extended frame data id ('std' or 'ext')
+
+                *length*: Length of data to be transmitted, in bytes (11223344 -> 4)
+
+                *type*: Type of frame ('remote' or 'data')
         '''
 
         message = {'format': 'std', 'id': data_id, 'length': 0, 'data': data, 'type': 'data'}
@@ -201,11 +226,15 @@ class Session():
         Reactions will try to pass it the hex id and data as the first and second positional
         arguments. If thrown a TypeError, it will call the action without any arguments.
 
-        NOTE: If the frame is a remote request frame, the passed data will be 'remote' instead
-        of an int!
+        Example:
+            >>> Session.register(0x123, action)
+
+        Note:
+            If the frame is a remote request frame, the passed data will be 'remote' instead
+            of an int!
 
         Args:
-            data_id(int): The hex data_id that the action will be registered to
+            data_id: The hex data_id that the action will be registered to
             action: The python function that will be performed.
             kwargs:
                 remote_only: Respond only to remote request frames (Default: False)
@@ -313,7 +342,7 @@ class Session():
         '''Check is message has an action attached, and execute if found
 
         Args:
-            Can message formatted as [id] [data]
+            line: Can message formatted as [id] [data]
         '''
         try:
             data_id, message = line.strip('\n\r').split(' ')
@@ -422,7 +451,7 @@ class Reactions():
     id, then the reaction will respond with the originating frame's id and
     then returned data.
 
-    Example:
+    Note:
         Example action response: {'id': 0x123, 'data': 0x11223344}
 
     Attributes:

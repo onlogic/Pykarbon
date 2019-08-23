@@ -18,9 +18,9 @@ Automatic Operation
 ---------------------
 
 ``import pykarbon.pykarbon as pk`` is the first thing you will probably encounter when starting up Pykarbon --
-and for good reason. This module dead simple to use (*only one class!*), but automatically leverages
-the more powerful features of Pykarbon's other modules. In fact, the majority of use cases can be boiled
-down to just *five lines:*
+and for good reason. This module dead simple to use, but automatically leverages the more powerful
+features of Pykarbon's other modules. In fact, the majority of use cases can be boiled down to just
+*five lines:*
 
 .. code-block:: python
 
@@ -50,8 +50,8 @@ The Toolbox
 Pykarbon offers several modules that give you different levels of access and ease when using your
 hardware. These include:
 
-pykarbon
-^^^^^^^^
+:ref:`pykarbon.pykarbon`
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 This is the highest level module. It's single 'Karbon' class creates a control object that you can
 use to write to both the K300's serial terminal and CAN port. It also starts background monitoring
@@ -59,8 +59,15 @@ on both of those ports, and allows you to access any data streamed to either por
 respective data queues. In most cases, the best way to use this module is as a command line
 controller for your hardware.
 
-terminal & can
-^^^^^^^^^^^^^^
+:ref:`pykarbon.core`
+^^^^^^^^^^^^^^^^^^^^
+
+For when you just need the simple things in life, this module is there to let you perform basic
+commands in a blocking, hassle-free, way. You can use it to sniff packets on you CAN bus, read
+back user configuration information, and toggle digital IO to your heart's content.
+
+:ref:`pykarbon.terminal` & :ref:`pykarbon.can`
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The terminal and can modules holds the tools for creating controlling and monitoring your their
 respective virtual terminals. They also allows you to disable automatic background monitoring, and
@@ -72,8 +79,8 @@ using, but the real power is that they will automatically execute your self-defi
 function. This means that you can register *any python function* to be called when a certain message
 is detected on the bus.
 
-hardware
-^^^^^^^^
+:ref:`pykarbon.hardware`
+^^^^^^^^^^^^^^^^^^^^^^^^
 
 The low-level access layer takes care of discovering and claiming ports, and offers an object with
 read and write methods. Developers that want fine-grain control over how their system operates, or

@@ -3,6 +3,26 @@
 Pykarbon is designed to wrap interfacing with the microntroller on the Karbon series in an object,
 with the explicit goal of being able to treat this object in a more pythonic manner. In this manner
 most serial interactions with carbon are greatly simplified, and are more versatile.
+
+Note:
+
+    :class:`pykarbon.pykarbon`'s only class, Karbon, will claim and use both microntroller
+    interfaces. Addtionally, the full featuresets of both :class:`pykarbon.terminal.Session` and
+    :class:`pykarbon.can.Session` are accessable via :attr:`Karbon.terminal` and
+    :attr:`Karbon.can` respectively
+
+Example:
+
+    .. code-block:: python
+
+        import pykarbon.pykarbon as pk
+
+        with pk.Karbon() as dev:
+            dev.write(0x123, 0x11223344)  # Send a message over the can interface
+            dev.can.data  # List of receive can messages
+
+            # Karbon.write uses input length and types to determine what action to perform!
+            dev.write(0, '1')  # Set digital output zero high
 '''
 
 import pykarbon.can as pkc

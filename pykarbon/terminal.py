@@ -1,5 +1,20 @@
 # -*- coding: utf-8 -*-
-''' Tools for sending commands to the microcontroller, as well as using the DIO '''
+''' Tools for sending commands to the microcontroller, as well as using the DIO
+
+Example:
+
+    .. code-block:: python
+
+        import pykarbon.terminal as pkt
+
+        with pkt.Session() as dev:
+            dev.update_info(print_info=True) # Update and print configuration info
+
+            dev.set_do(0, True) # Set digital output zero high
+
+    This snippet will update and print the microntrollers configuration information, and then set
+    digital output zero high.
+'''
 from time import sleep, time
 import re
 import threading
@@ -22,8 +37,20 @@ class Session():
     Digital IO events will be recorded in the data queues, while configuration information will
     overwite the 'info' dictionary.
 
+    Args:
+        timeout(int, optional): Time until read attempts stop in seconds. (None disables)
+        automon(bool, optional): Automatically monitor incoming data in the background.
+
+    When 'automon' is set to 'True', this object will immediately attempt to claim the terminal
+    connection that it discovers. Assuming the connection can be claimed, the session will then
+    start monitoring all incoming data in the background.
+
+    This data is stored in the the session's 'data' attribute, and can be popped from the queue
+    using the 'popdata' method. Additionally, the entire queue may be purged to a csv file using
+    the 'storedata' method -- it is good practice to occasionally purge the queue.
+
     Attributes:
-        interface: Serial interface object that has methods for reading/writing to the port.
+        interface: :class:`pykarbon.hardware.Interface`
         pre_data: Data before it has been parsed by the registry service.
         data: Queue for holding the data read from the port
         isopen: Bool to indicate if the interface is connected
@@ -32,20 +59,7 @@ class Session():
         bgmon: Thread object of the bus background monintor
     '''
     def __init__(self, timeout=.01, automon=True):
-        '''Discovers hardware port name.
-
-        When 'automon' is set to 'True', this object will immediately attempt to claim the terminal
-        connection that it discovers. Assuming the connection can be claimed, the session will then
-        start monitoring all incoming data in the background.
-
-        This data is stored in the the session's 'data' attribute, and can be popped from the queue
-        using the 'popdata' method. Additionally, the entire queue may be purged to a csv file using
-        the 'storedata' method -- it is good practice to occasionally purge the queue.
-
-        Args:
-            timeout(int, optional): Time until read attempts stop in seconds. (None disables)
-            automon(bool, optional): Automatically monitor incoming data in the background.
-        '''
+        '''Discovers hardware port name. '''
         self.interface = pk.Interface('terminal', timeout)
 
         self.pre_data = []
@@ -168,12 +182,15 @@ class Session():
         first transitions to a state -- subsequent bus reads will be ignored:
 
         Example:
-            register(1, 'low', action)
+            >>> Session.register(1, 'low', action)
 
-            Input 1 : 1 --> 0 (Execute Action)
-            Input 1 : 0 --> 0 (Do nothing)
-            Input 1 : 0 --> 1 (Do nothing)
-            Input 1 : 1 --> 0 (Execute Action)
+            Input 1 : 1 --> 0   (*Execute Action*)
+
+            Input 1 : 0 --> 0   (*Do nothing*)
+
+            Input 1 : 0 --> 1   (*Do nothing*)
+
+            Input 1 : 1 --> 0   (*Execute Action*)
 
         Actions should be a python function, which will be automatically wrapped in a
         pykarbon.terminal.Reactions object by this function. When the passed action is called
@@ -185,12 +202,15 @@ class Session():
         not be executed.
 
         Example:
-            register(1, 'high', action, dio_state='---0 ---1')
+            >>> Session.register(1, 'high', action, dio_state='---0 ---1')
 
-            Input 1 : 0 --> 1, Bus State: 0011 1111 (Do nothing)
-            Input 1 : 1 --> 1, Bus State: 0000 1111 (Do nothing)
-            Input 1 : 1 --> 0, Bus State: 0000 1111 (Do nothing)
-            Input 1 : 0 --> 1, Bus State: 0000 1111 (Execute Action)
+            Input 1 : 0 --> 1, Bus State: 0011 1111   (*Do nothing*)
+
+            Input 1 : 1 --> 1, Bus State: 0000 1111   (*Do nothing*)
+
+            Input 1 : 1 --> 0, Bus State: 0000 1111   (*Do nothing*)
+
+            Input 1 : 0 --> 1, Bus State: 0000 1111   (*Execute Action*)
 
         Note:
             Bus state format is digital output 0-4 space digital input 0-4. Dashes are 'don't care'
@@ -274,8 +294,8 @@ class Session():
         a single output.
 
         Example:
-            set_do(0, True)
-            set_do('two', 0)
+            >>> set_do(0, True)
+            >>> set_do('two', 0)
         '''
         states = {'zero': '-', 'one': '-', 'two': '-', 'three': '-'}
         map_state = {0: '0', 1: '1', False: '0', True: '1', '0': '0', '1': '1'}
@@ -293,7 +313,7 @@ class Session():
                 Note: A '-' will skip setting the corrosponding output
 
         Example:
-            set_all_do(['0', '0', '0', '0'])  -- turn all outputs off
+            >>> set_all_do(['0', '0', '0', '0'])  # turn all outputs off
         '''
         self.write("set-do {}{}{}{}".format(*states))
 
@@ -563,7 +583,11 @@ class Reactions():
     outputs will be set.
 
     Example:
-        Example action response: ['0', '1', '1', '0']
+        >>> ['0', '1', '1', '0'] # Example action response
+
+    Note:
+        When manually building reactions, you will need to pass in a pointer to the set_all_do
+        function of a claimed interface.
 
     Attributes:
         info: The input number and state that trigger this reaction
