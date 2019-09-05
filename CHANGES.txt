@@ -1,8 +1,12 @@
+v1.1.1
++ Generally improve pykarbon.can.format_message to have a more robust input acceptance, and to
+  actually allow for sending custom formatted messages. 
+
 v1.1.0
 + Add pykarbon.core module
 + Add support for reading input voltage
 + Fix bug in pykarbon.terminal reactions not triggering
-+ Improve and add documentation on rtd. 
++ Improve and add documentation on rtd.
 
 v1.0.5
 + Fix bug where parameters would not be saved on system hard-reboot
