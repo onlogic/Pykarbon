@@ -120,7 +120,17 @@ def test_format_message():
     assert message == expected
 
     message = dev.format_message(0x123, None)
-    expected = {'format': 'std', 'id': '123', 'length': 0, 'data': None, 'type': 'remote'}
+    expected = {'format': 'std', 'id': '123', 'length': 0, 'data': '', 'type': 'remote'}
+
+    assert message == expected
+
+    message = dev.format_message(0x123, '0x00C2')
+    expected = {'format': 'std', 'id': '123', 'length': 2, 'data': '00C2', 'type': 'data'}
+
+    assert message == expected
+
+    message = dev.format_message('999', '00C200C2')
+    expected = {'format': 'ext', 'id': '999', 'length': 4, 'data': '00C200C2', 'type': 'data'}
 
     assert message == expected
 
@@ -148,13 +158,17 @@ def test_auto_read_write():
     ''' Confirm that reading and writing still works when automonitoring '''
     dev = pkc.Session(baudrate=800)
     dev.write(0x123, 0x1122334455667788)
-
+    sleep(STANDARD_DELAY)
+    dev.write(0x7FF, '0x00C2')
+    sleep(STANDARD_DELAY)
+    dev.write('999', '00000000DEADBEEF')
     sleep(STANDARD_DELAY)
 
     dev.close()
 
-    out = dev.popdata()
-    assert '123 1122334455667788' in out
+    assert '123 1122334455667788' in dev.data
+    assert '7FF 00C2' in dev.data
+    assert '00000999 00000000DEADBEEF'
 
 
 def test_storedata():
