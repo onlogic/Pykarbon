@@ -506,7 +506,7 @@ class Reactions():
                 Should be the string 'remote' for remote frames.
         '''
         if not self.remote_only and ('remote' not in hex_data):
-            hex_data = int(hex_data, 16)
+            hex_data = int(hex_data, 16) if hex_data else None
 
         try:
             out = self.action(self.data_id, hex_data)
