@@ -1,4 +1,4 @@
-''' Testing the can tools. Assumes the Karbon has all can messages echoed'''
+''' Testing the can tools. Assumes the Karbon has all can messages echoed '''
 from time import sleep
 import pykarbon.can as pkc
 import re
@@ -221,8 +221,15 @@ def test_can_register():
     dev.pre_data.append('777 11223344')
     dev.pre_data.append('666 11223344')
     sleep(STANDARD_DELAY)
-    dev.close()
 
     assert ACTION_ID == 0x777
     assert ACTION_DATA == 0x11223344
     assert '111 22' in dev.data
+
+    dev.send_can(dev.format_message(0x777, 0xFF, length=0))
+    sleep(STANDARD_DELAY)
+
+    assert ACTION_ID == 0x777
+    assert ACTION_DATA is None
+
+    dev.close()
