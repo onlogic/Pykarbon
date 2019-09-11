@@ -79,7 +79,8 @@ class Hardware:
             sio.write('version')
             sio.flush()
 
-            if sio.readline():
+            out = sio.readline()
+            if '<' in out and '>' in out:
                 retvl = 'terminal'
         except serial.serialutil.SerialException:
             pass
@@ -103,7 +104,15 @@ class Interface(Hardware):
             port_name: Human-readable name of serial port ("can" or "terminal")
         '''
         super(Interface, self).__init__()
-        self.port = self.ports[port_name]
+        try:
+            self.port = self.ports[port_name]
+        except KeyError as error:
+            if self.ports:
+                print("Did not discover %s port! Attempting to use defaults..." % port_name)
+                self.port = self.ports[0] if port_name == 'can' else self.ports[1]
+            else:
+                raise ConnectionError("Could not find ANY ports -- try a/c power cycle?") from error
+
         self.ser = None
         self.sio = None
         self.multi_line_response = {"config": 12, "status": 5}
