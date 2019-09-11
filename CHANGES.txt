@@ -1,3 +1,6 @@
+v1.1.2
++ Fix bug on port detection when connecting to active CAN bus. 
+
 v1.1.1
 + Generally improve pykarbon.can.format_message to have a more robust input acceptance, and to
   actually allow for sending custom formatted messages.
