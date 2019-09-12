@@ -24,6 +24,27 @@ import re
 
 import pykarbon.hardware as pk
 
+# Tools --------------------------------------------------------------------------------------------
+
+
+def stringify(value):
+    ''' Takes variously formatted hex values and outputs them in simple string format '''
+    out = ''
+    if value:
+        out = (hex(value) if isinstance(value, int) else value).replace('0x', '').upper()
+
+    return out
+
+
+def hexify(value):
+    ''' Takes variously formatted hex values and outputs them as a int '''
+    out = 0x0
+    if value:
+        out = int(value.replace('0x', ''), 16) if isinstance(value, str) else value
+
+    return out
+# --------------------------------------------------------------------------------------------------
+
 
 class Session():
     '''Attaches to CAN serial port and allows reading/writing from the port.
@@ -154,7 +175,7 @@ class Session():
         return self.baudrate
 
     @staticmethod
-    def format_message(data_id, data, **kwargs):
+    def format_message(id, data, **kwargs):
         ''' Takes an id and data and determines other message characteristics
 
         When keyword arguments are left blank, this function will extrapolate the correct
@@ -162,8 +183,9 @@ class Session():
         If desired, all of the automatically determined characteristics may be overwritten.
 
         Args:
-            data_id(int): Data id of the message, in hex
-            data(int): Message data, in hex -- if 'None', the device will send a remote frame.
+            data_id: Data id of the message, in hex (0x123, '0x123', '123')
+            data: Message data, in hex -- if 'None', the device will send a remote frame.
+                NOTE: Use string version of hex to send leading zeroes ('0x00C2' or '00C2')
             **kwargs:
 
                 *format*: Use standard or extended frame data id ('std' or 'ext')
@@ -173,25 +195,14 @@ class Session():
                 *type*: Type of frame ('remote' or 'data')
         '''
 
-        message = {'format': 'std', 'id': data_id, 'length': 0, 'data': data, 'type': 'data'}
-
-        if data_id > 0x7FF:
-            message['format'] = 'ext'
-
-        message['id'] = hex(data_id)[2:]
-
-        if not data:
-            message['type'] = 'remote'
-        else:
-            data = hex(data)[2:]
-            message['length'] = int(len(data) / 2)
-            message['data'] = data
-
-        for key, value in kwargs:
-            try:
-                message[key] = value
-            except KeyError:
-                print("{} is not a valid keyword".format(key))
+        data = stringify(data)
+        message = {
+            'format': kwargs.get('format', 'std' if hexify(id) <= 0x7FF else 'ext'),
+            'id': stringify(id),
+            'length': kwargs.get('length', int(len(data) / 2)),
+            'data': data,
+            'type': kwargs.get('type', 'data' if data else 'remote')
+        }
 
         return message
 
@@ -495,7 +506,7 @@ class Reactions():
                 Should be the string 'remote' for remote frames.
         '''
         if not self.remote_only and ('remote' not in hex_data):
-            hex_data = int(hex_data, 16)
+            hex_data = int(hex_data, 16) if hex_data else None
 
         try:
             out = self.action(self.data_id, hex_data)

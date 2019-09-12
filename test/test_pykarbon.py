@@ -37,7 +37,7 @@ def test_context_manager_time():
 
     end = time() - start
 
-    assert end < 12
+    assert end < 15
     assert re.match(r'(v)?(\d\.){3}\d', out)
 
 
