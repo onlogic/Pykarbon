@@ -113,7 +113,7 @@ class Terminal(pk.Interface):
             default(optional): What to return if findall fails, default None
         '''
         out = re.search(expression, self.readall([])[0])
-        return out[0] if out else default
+        return out.group() if out else default
 
     def cleanout(self):
         ''' Flush the input buffer, discarding the contents '''
@@ -244,7 +244,7 @@ class Can(pk.Interface):
 
         newtime = mt()
         delta = newtime - prev_time
-        out = re.search(r'(?P<id>.+)\s(?P<data>.+)', line)
+        out = re.search(r'(?P<id>.+)\s(?P<data>.+)', line).groupdict()
 
         message = {
             'id': out['id'],
@@ -252,7 +252,7 @@ class Can(pk.Interface):
             'delta': delta
         }
 
-        print('| {delta:010.4f} | 0x{id:8s} | 0x{data:8s} |'.format(**message))
+        print('| {delta:010.4f} | 0x{id:8s} | 0x{data:16s} |'.format(**message))
 
         return newtime, message
 
