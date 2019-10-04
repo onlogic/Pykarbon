@@ -20,6 +20,7 @@ def test_command_print(capsys):
 
 
 def test_grepall():
+    out = None
     with pkcore.Terminal() as dev:
         dev.write('version')
         out = dev.grepall(r'(\d\.){3}\d', None)
