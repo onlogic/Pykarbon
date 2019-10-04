@@ -170,7 +170,7 @@ class Session():
                 set_rate = str(baudrate)
 
         temp = re.search(r'\s(?P<baud>[\d]+)k', set_rate)
-        self.baudrate = temp['baud'] if temp else None
+        self.baudrate = temp.groupdict()['baud'] if temp else None
 
         return self.baudrate
 
