@@ -84,3 +84,36 @@ to allow running these sessions using a context manager:
 
     with pkc.Session() as dev:
         dev.write(0x123, 0x11223344)
+
+
+-------------------------------
+A Simple Example: Pykarbon.Core
+-------------------------------
+
+.. code-block:: python
+
+    import pykarbon.core as pkcore
+
+    # Set up interfaces:
+    can = pkcore.Can()
+    term = pkcore.Terminal()
+
+    # Claim the serial ports for use:
+    can.claim()
+    term.claim()
+
+    # Configure the can baudrate, and view that config
+    term.command('set can-baudrate 800')
+
+    print("\nRead User Configuration:")
+    term.print_command('config')
+
+    # Write a message, and then listen for and print responses
+    can.send(0x123, 0x11223344)
+
+    print("\nMonitoring CAN Bus, Press CTRL+C to Stop!")
+    can.sniff() # Will block until you exit with ctrl+c
+
+    # Close the ports!
+    can.release()
+    term.release()
