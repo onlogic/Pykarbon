@@ -228,6 +228,7 @@ class Can(pk.Interface):
             length(int): Length in bytes of expected message, should be specified for remote.
         '''
         data_n = hex(data)[2:] if data else 'FF'
+        data_n = '0' + data_n if len(data_n) % 2 else data_n
         message = {
             'format': 'std' if data_id < 0x7FF else 'ext',
             'id': hex(data_id)[2:],
