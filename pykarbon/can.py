@@ -69,8 +69,10 @@ class Session():
 
             `100 - 1000` -> Set the baudrate to the input value, in thousands
 
-        timeout (int, optional): Time until read/write attempts stop in seconds. (None disables)
+        timeout (float, optional): Time until read/write attempts stop in seconds. (None disables)
         automon (bool, optional): Automatically monitor incoming data in the background.
+        reaction_poll_delay (float, optional): Time between checking received data for a registered
+            value. Decreasing this delay will consume more unused CPU time.
 
 
     If the baudrate option is left blank, the device will instead attempt to automatically
@@ -91,10 +93,11 @@ class Session():
         registry: Dict of registered DIO states and function responses
         bgmon: Thread object of the bus background monintor
     '''
-    def __init__(self, baudrate='autobaud', timeout=.01, automon=True):
+    def __init__(self, baudrate='autobaud', timeout=.01, automon=True, reaction_poll_delay=.01):
         '''Discovers hardware port name.'''
         self.interface = pk.Interface('can', timeout)
 
+        self.poll_delay = reaction_poll_delay
         self.baudrate = None
         self.pre_data = []
         self.data = []
@@ -339,6 +342,9 @@ class Session():
         into the main data queue. Otherwise, just move the data.
         '''
         while self.isopen:
+            # Allow CPU to have time
+            sleep(self.poll_delay)
+
             try:
                 line = self.pre_data.pop(0)
                 if line:
