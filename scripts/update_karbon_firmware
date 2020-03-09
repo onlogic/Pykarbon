@@ -1,17 +1,19 @@
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
+
 ''' Update the karbon's firmware, given a firmware file '''
 
 import sys
 from time import sleep
 import pykarbon.hardware as pk
 
-ERR_CD = \
-{
-    0 : 'Sucess: Firmware Updated!',
-    1 : 'Error : Wrong number of arguments.',
-    2 : 'Error : Please specify a binary file.',
-    3 : 'Error : Could not open firmware file!',
+ERR_CD = {
+    0: 'Sucess: Firmware Updated!',
+    1: 'Error : Wrong number of arguments.',
+    2: 'Error : Please specify a binary file.',
+    3: 'Error : Could not open firmware file!',
 }
+
 
 def check_file(filename):
     ''' Check if update file is valid '''
@@ -27,6 +29,7 @@ def check_file(filename):
         rtval = 3
 
     return rtval
+
 
 def update_firmware(binary_file):
     ''' Update the K300 firware with specified binary update file '''
@@ -62,9 +65,9 @@ def update_firmware(binary_file):
         with open(binary_file, 'rb') as update:
             bootloader.ser.write(update.read())
 
-
     print("Done!")
     return 0
+
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:

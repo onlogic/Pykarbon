@@ -38,7 +38,7 @@ test_dev:
   script:
     - tox -e py35 # Use tox to run tests
   tags:
-    - k300
+    - karbon
 
 # Always test before deploying
 test_staging:
@@ -48,7 +48,7 @@ test_staging:
   script:
     - tox
   tags:
-    - k300
+    - karbon
 
 # Wheel for deployment to pypi
 make_wheel:
@@ -64,7 +64,7 @@ make_wheel:
     paths:
     - dist/*
   tags:
-    - k300
+    - karbon
 
 # Deploy to testpypi from staging branch
 deploy_staging:
@@ -83,7 +83,7 @@ deploy_staging:
   script:
     - twine upload --repository-url https://test.pypi.org/legacy/ dist/*
   tags:
-    - k300
+    - karbon
 
 # Deploy to live pypi from master branch
 deploy_production:
@@ -102,7 +102,7 @@ deploy_production:
   script:
     - twine upload dist/*
   tags:
-    - k300
+    - karbon
 
 #pages:
 #  script:

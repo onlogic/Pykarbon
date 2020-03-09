@@ -2,29 +2,35 @@
 import re
 import pykarbon.hardware as pk
 
+
 def test_port_discovery():
     ''' Test that both ports are discovered '''
-    found_ports = pk.Hardware().get_ports()
 
-    assert 'can' in found_ports
-    assert 'terminal' in found_ports
+    for i in range(0, 5):
+        found_ports = pk.Hardware().get_ports()
+
+        assert 'can' in found_ports
+        assert 'terminal' in found_ports
+
 
 def test_port_claim_release():
     ''' Confirm that ports can be claimed and released by pyserial '''
-    term = pk.Interface('terminal')
-    can = pk.Interface('can')
+    for i in range(0, 5):
+        term = pk.Interface('terminal')
+        can = pk.Interface('can')
 
-    term.claim()
-    can.claim()
+        term.claim()
+        can.claim()
 
-    assert term.ser.is_open
-    assert can.ser.is_open
+        assert term.ser.is_open
+        assert can.ser.is_open
 
-    term.release()
-    can.release()
+        term.release()
+        can.release()
 
-    assert not term.ser
-    assert not can.ser
+        assert not term.ser
+        assert not can.ser
+
 
 def test_read_write():
     ''' Confirm that we can write to both ports '''
@@ -45,6 +51,7 @@ def test_read_write():
     assert match
     assert '123 1122334455667788' in can_out[0]
 
+
 def test_context_manager():
     ''' Check that we can use the interface as a context manager '''
 
@@ -56,6 +63,7 @@ def test_context_manager():
     match = re.match(r"<.+v(\d\.){3}\d.+>", out[0])
     assert match
 
+
 def test_multiple_release():
     ''' Ensure that is allowed to close a closed port '''
     term = pk.Interface('terminal')
@@ -64,6 +72,7 @@ def test_multiple_release():
     term.release()
     term.release()
     term.release()
+
 
 def test_unclaimed_read_write():
     ''' Check that correct errors are thrown when a user tries a closed port '''
@@ -75,6 +84,7 @@ def test_unclaimed_read_write():
 
     with raises(ConnectionError):
         term.cread()
+
 
 def test_multiple_argument_writes():
     ''' Check that buffer is cleared in such a way that multi-argument writes always succeed '''
