@@ -39,7 +39,7 @@ terminal
 i2c
 ---
 
-.. automodule:: pykarbon.can
+.. automodule:: pykarbon.i2c
     :members:
 
 .. _pykarbon.hardware:
