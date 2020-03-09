@@ -93,15 +93,15 @@ def test_automon_restart():
     dev.close()
 
 
-def test_autobaud():
-    ''' Check that autobaudrate correctly discovers the bus baudrate '''
+#def test_autobaud():
+#    ''' Check that autobaudrate correctly discovers the bus baudrate '''
 
-    dev = pkc.Session()
-    sleep(4)
+#    dev = pkc.Session()
+#    sleep(4)
 
-    dev.close()
+#    dev.close()
 
-    assert re.match(r'[\d]+', dev.baudrate)
+#    assert re.match(r'[\d]+', dev.baudrate)
 
 
 def test_format_message():
@@ -199,6 +199,10 @@ def test_context_manager():
     with pkc.Session() as dev:
         assert dev.isopen
         assert dev.bgmon.isAlive()
+
+        sleep(.5)
+        dev.pre_data = []
+        dev.data = []
 
         dev.write(0x123, 0x11223344)
         sleep(STANDARD_DELAY)
