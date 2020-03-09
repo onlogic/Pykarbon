@@ -36,6 +36,7 @@ class Hardware:
 
     def __init__(self):
         ''' Discovers the MCUs two serial ports '''
+        self.retry = 0
         self.ports = {}
         self.get_ports()
 
@@ -58,7 +59,12 @@ class Hardware:
 
                 desc = desc  # Remove pylint warning
 
-        return self.ports
+        if len(self.ports) != 2 and self.retry < 50:
+            self.ports = {}
+            self.retry += 1
+            return self.get_ports()
+        else:
+            return self.ports
 
     @staticmethod
     def check_port_kind(port_name: str) -> str:
@@ -73,7 +79,10 @@ class Hardware:
         retvl = 'can'
         # TODO: This will likely never error-out
         try:
-            ser = serial.Serial(port_name, 115200, xonxoff=1, timeout=.01)
+            ser = serial.Serial(port_name, 115200, xonxoff=1, timeout=.25)
+            ser.flushOutput()
+            ser.flushInput()
+
             sio = io.TextIOWrapper(io.BufferedRWPair(ser, ser), newline='\r')
 
             sio.write('version')

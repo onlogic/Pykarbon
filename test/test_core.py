@@ -34,6 +34,8 @@ def test_dio_controls():
     with pkcore.Terminal() as dev:
         dev.write('set-do 0000')
 
+        dev.cleanout()
+
         out.append(dev.get_state(0))
         sts.append(dev.input_states())
 
@@ -49,6 +51,8 @@ def test_dio_controls():
         out.append(dev.get_state(0))
         sts.append(dev.input_states())
 
+    print(sts)
+    print(out)
     assert (sts[0] == sts[2] == ['1', '1', '1', '1'])
     assert (sts[1] == ['0', '1', '1', '1'])
     assert (out[0] == out[2] == '1') and (out[1] == '0')
