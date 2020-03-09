@@ -1,5 +1,6 @@
 ''' Test pykarbon terminal functionality '''
 from time import sleep, time
+from copy import deepcopy
 import re
 
 import pykarbon.terminal as pkt
@@ -16,7 +17,7 @@ def wait_re(dev, timeout=1):
     ''' Wait until data has been logged, and then return that data '''
     start = time()
     elapsed = 0
-    
+
     out = ''
     while not out and elapsed < timeout:
         out = dev.popdata()
@@ -34,14 +35,19 @@ def test_set_do():
     ''' Check the set_do() method '''
     with pkt.Session() as dev:
         temp = reset_do(dev)
-        
+
         for i in range(0, 4):
+            sleep(.75)
+            dev.popdata()
+
             dev.set_do(i, True)
-            out = wait_re(dev)
+            sleep(.75)
+            out = dev.popdata()
+
+            print(i, out)
 
             dev.set_do(i, False)
-            wait_re(dev)
-            
+
             assert (temp[0:i] + '1' + temp[i + 1:]) == out[-4:]
 
 def test_param_set():
@@ -51,7 +57,7 @@ def test_param_set():
         ('startup-timer', '1'),
         ('shutdown-timer', '10'),
         ('hard-off-timer', '120'),
-        ('auto-power-on', 'off'),
+        #('auto-power-on', 'off'),
         ('shutdown-voltage', '6'),
         ('hotplug', 'on'),
         ('can-baudrate', '800'),
@@ -63,7 +69,7 @@ def test_param_set():
         ('startup-timer', '2'),
         ('shutdown-timer', '12'),
         ('hard-off-timer', '100'),
-        ('auto-power-on', 'on'),
+        #('auto-power-on', 'on'),
         ('shutdown-voltage', '7'),
         ('hotplug', 'off'),
         ('can-baudrate', '850'),
@@ -80,13 +86,15 @@ def test_param_set():
         dev.update_info(print_info=True)
         sleep(STANDARD_DELAY)
 
-        out = dev.info
+        out = deepcopy(dev.info)
+        print(out)
 
         for param, value in defaults:
             dev.set_param(param, value, update=False, save_config=False)
             sleep(STANDARD_DELAY)
 
     for param, value in test_values:
+        print(param, value)
         assert value in out[param]['value']
 
 def test_reactions(capsys):
