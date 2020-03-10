@@ -29,7 +29,7 @@ or, in Ubuntu:
 
 .. code-block:: console
 
-    $ pip3 install pykarbon --user
+    $ python3 -m pip install pykarbon --user
 
 -----
 Usage
