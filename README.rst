@@ -31,7 +31,7 @@ Getting started with pykarbon takes only a few minutes:
 
 - Launch a python shell with ``python``
 
-  + Usually linux users do not have write access to serial ports; try ``sudo python``
+  + Usually linux users do not have write access to serial ports; grant your user permanent access with ``usermod -a -G dialout $USER`` or use ``sudo python``
 
 - Import pykarbon with ``import pykarbon.pykarbon as pk``
 - And finally create a control object using ``dev = pk.Karbon()``
