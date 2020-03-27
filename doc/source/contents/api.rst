@@ -34,6 +34,14 @@ terminal
 .. automodule:: pykarbon.terminal
     :members:
 
+.. _pykarbon.i2c:
+
+i2c
+---
+
+.. automodule:: pykarbon.i2c
+    :members:
+
 .. _pykarbon.hardware:
 
 hardware

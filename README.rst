@@ -25,25 +25,31 @@ How do I use it?
 
 Getting started with pykarbon takes only a few minutes:
 
-- Open up a terminal, and run ``pip install pykarbon``
+.. role:: bash(code)
+   :language: bash
 
-  + On some systems you may need to run as admin, or use the ``--user`` flag
+- Open up a terminal, and run :bash:`pip install pykarbon`
 
-- Launch a python shell with ``python``
+  + On some systems you may need to run as admin, or use the :bash:`--user` flag
 
-  + Usually linux users do not have write access to serial ports; try ``sudo python``
+- Launch a python shell with :bash:`python`
 
-- Import pykarbon with ``import pykarbon.pykarbon as pk``
-- And finally create a control object using ``dev = pk.Karbon()``
+  + Usually linux users do not have write access to serial ports; grant your user permanent access with :bash:`usermod -a -G dialout $USER` or use :bash:`sudo python`
+
+.. role:: python(code)
+   :language: python
+
+- Import pykarbon with :python:`import pykarbon.pykarbon as pk`
+- And finally create a control object using :python:`dev = pk.Karbon()`
 
 If all went well, you should now be ready to control a variety of systems, but for now, let's just print out some
 configuration information:
 
-- ``dev.show_info()``
+- :python:`dev.show_info()`
 
 And close our session:
 
-- ``dev.close()``
+- :python:`dev.close()`
 
 -------------------
 What else can I do?
