@@ -63,18 +63,18 @@ controller for your hardware.
 ^^^^^^^^^^^^^^^^^^^^
 
 For when you just need the simple things in life, this module is there to let you perform basic
-commands in a blocking, hassle-free, way. You can use it to sniff packets on you CAN bus, read
+commands in a blocking, hassle-free, way. You can use it to sniff packets on your CAN bus, read
 back user configuration information, and toggle digital IO to your heart's content.
 
 :ref:`pykarbon.terminal` & :ref:`pykarbon.can`
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The terminal and can modules holds the tools for creating controlling and monitoring your their
-respective virtual terminals. They also allows you to disable automatic background monitoring, and
+The terminal and can modules hold the tools for creating, controlling and monitoring their
+respective virtual terminals. They also allow you to disable automatic background monitoring, and
 take control of reads and writes in a very direct way.
 
 These modules also provide a "reaction" class that may be subclassed in order to generate your own,
-custom, responses to bus events. Reactions have built in ability to respond over the port they are
+custom, responses to bus events. Reactions have the built-in ability to respond over the port they are
 using, but the real power is that they will automatically execute your self-defined callback
 function. This means that you can register *any python function* to be called when a certain message
 is detected on the bus.
