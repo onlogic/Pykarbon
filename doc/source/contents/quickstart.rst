@@ -6,13 +6,13 @@ Quickstart
 Prerequisites
 -------------
 
-Before running through this guide, make sure you have a couple of things ready:
+Before running through this guide, make sure you have these things ready:
 
 - *A Karbon_ series computer.*
 - `Python 3`_ downloaded and installed on the system.
 
     + Make sure you add Python to your path if installing on Windows
-- An internet connection on the target Karbon
+- An internet connection on the target Karbon.
 
 
 ------------
@@ -29,13 +29,13 @@ or, in Ubuntu:
 
 .. code-block:: console
 
-    $ pip3 install pykarbon --user
+    $ python3 -m pip install pykarbon --user
 
 -----
 Usage
 -----
 
-Launch a python terminal using from command line using ``python`` in Windows or ``sudo python3``
+Launch a Python REPL in your terminal with ``python`` in Windows or ``sudo python3``
 in Ubuntu. Now you're just a few commands away from talking with your hardware:
 
 .. code-block:: python
