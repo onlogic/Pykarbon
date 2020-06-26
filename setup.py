@@ -9,7 +9,7 @@ setup(
     author='Logic Supply',
     author_email='jacob.caughfield@logicsupply.com',
     packages=['pykarbon'],
-    install_requires=['pyserial'],
+    install_requires=['pyserial==3.4'],
     scripts=['scripts/update_karbon_firmware'],
     version='1.1.7',
     license='BSD-2.0',
