@@ -1,2 +1,2 @@
 # Specify packages required to use pykarbon:
-pyserial
+pyserial==3.4
