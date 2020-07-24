@@ -11,7 +11,7 @@ Before running through this guide, make sure you have these things ready:
 - *A Karbon_ series computer.*
 - `Python 3`_ downloaded and installed on the system.
 
-    + Make sure you add Python to your path if installing on Windows
+    + Be sure to add Python to your path if installing on Windows
 - An internet connection on the target Karbon.
 
 
@@ -56,5 +56,5 @@ advanced and useful features can be found by using the dedicated :ref:`pykarbon.
 :ref:`pykarbon.terminal` modules. You can read more about them, and see some examples in the API.
 
 
-.. _Karbon: https://www.logicsupply.com/catalogsearch/result/?q=Karbon
+.. _Karbon: https://www.onlogic.com/catalogsearch/result/?q=Karbon
 .. _Python 3: https://www.python.org/downloads/
