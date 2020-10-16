@@ -676,7 +676,7 @@ def hardware_reference(device='K300'):
     '''Print useful hardware information about the device
 
     Displays hardware information about the DIO device, such as pinouts.
-    Then pinouts assume that the user is facing the front if the device, and that the fins
+    The pinouts assume that the user is facing the front of the device, and that the fins
     are pointed up.
 
     Args:
@@ -685,13 +685,23 @@ def hardware_reference(device='K300'):
 
     ref_k300 = \
         '''
-    Info: Isolated digital input/ouput. To function properly, dio should be connect to
-    external power and grund.
+    Info: Isolated digital input/ouput. To function properly, dio should be connected to
+    external power and ground. The Digital Outputs are "Open Collector", and must be tied
+    to VIN with a resitor to source current. The load should not exceed 150 mA.
 
-    Pinout: || GND | DO_1 | DO_2 | DO_3 | DO_4 | DI_1 | DI_2 | DI_3 | DI_4 | PWR ||
+    Pinout:
+    ---------------------------------------------------------------
+    || 10  |  9  |  8  |  7  |  6  |  5  |  4  |  3  |  2  |  1  ||
+    ||  ^     ^     ^     ^     ^     ^     ^     ^     ^     ^  ||
+    || |_|   |_|   |_|   |_|   |_|   |_|   |_|   |_|   |_|   |_| ||
+    || GND | DI3 | DI2 | DI1 | DI0 | DO3 | DO2 | DO1 | DO0 | VIN ||
+    ---------------------------------------------------------------
         '''
 
-    ref_dict = {'K300': ref_k300}
+    ref_dict = {
+        'K300': ref_k300,
+        'K700': ref_k300
+    }
 
     try:
         print(ref_dict[device.upper()])
