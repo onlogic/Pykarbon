@@ -73,7 +73,7 @@ def test_param_set(capsys):
 
         sleep(STANDARD_DELAY)
         out = (dev.terminal.info['can-baudrate']['value'])
-        dev.write('can-baudrate', '800')
+        dev.write('can-baudrate', '1000')
 
     captured = capsys.readouterr()
 

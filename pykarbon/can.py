@@ -558,7 +558,7 @@ def hardware_reference(device='K300'):
     '''Print useful hardware information about the device
 
     Displays hardware information about the CAN device, such as pinouts.
-    Then pinouts assume that the user is facing the front if the device, and that the fins
+    Then pinouts assume that the user is facing the front of the device, and that the fins
     are pointed up.
 
     Args:
@@ -572,12 +572,21 @@ def hardware_reference(device='K300'):
     are required to match the nominal impedance of the cable. To meet ISO 11898, this
     resistance should be 120 Ohms.
 
-    Pinout: || GND | CAN_LOW | CAN_HIGH ||
+    Pinout:
+    ---------------------
+    ||  3  |  2  |  1  ||
+    ||  ^     ^     ^  ||
+    || |_|   |_|   |_| ||
+    || GND | LOW | HGH ||
+    ---------------------
         '''
 
-    ref_dict = {'K300': ref_k300}
+    ref_dict = {
+        'K300': ref_k300,
+        'K700': ref_k300
+    }
 
     try:
         print(ref_dict[device.upper()])
     except KeyError:
-        print("Please select from: [K300]")
+        print("Please select from: [K300, K700]")

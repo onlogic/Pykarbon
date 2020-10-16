@@ -88,7 +88,7 @@ def test_unclaimed_read_write():
 
 def test_multiple_argument_writes():
     ''' Check that buffer is cleared in such a way that multi-argument writes always succeed '''
-    test_values = ['700', '710', '720', '730', '740', '750', '800']
+    test_values = ['700', '710', '720', '730', '740', '750', '1000']
     out_values = []
     with pk.Interface('terminal') as term:
         for value in test_values:
