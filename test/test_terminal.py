@@ -60,7 +60,7 @@ def test_param_set():
         #('auto-power-on', 'off'),
         ('shutdown-voltage', '6'),
         ('hotplug', 'on'),
-        ('can-baudrate', '800'),
+        ('can-baudrate', '1000'),
         ('dio-power-switch', 'off'),
         #('boot-config', 'true'),
     ]
@@ -104,7 +104,7 @@ def test_reactions(capsys):
         assert dev.registry[0]
 
         dev.set_do(0, True)
-        assert wait_re(dev) == '0111 1000'
+        assert wait_re(dev, timeout=5) == '0111 1000'
         assert wait_re(dev, timeout=5) == '1111 0000'
 
         sleep(1)
