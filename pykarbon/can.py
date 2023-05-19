@@ -21,6 +21,7 @@ Example:
 from time import sleep, time
 import threading
 import re
+import queue
 
 import pykarbon.hardware as pk
 
@@ -95,15 +96,16 @@ class Session():
     '''
     def __init__(self, baudrate='autobaud', timeout=.01, automon=True, reaction_poll_delay=.01):
         '''Discovers hardware port name.'''
-        self.interface = pk.Interface('can', timeout)
-
         self.poll_delay = reaction_poll_delay
         self.baudrate = None
-        self.pre_data = []
-        self.data = []
+        self.pre_data = queue.Queue()
+        self.data = queue.Queue()
+        self.data_event = threading.Event()
         self.isopen = False
         self.bgmon = None
         self.registry = {}
+
+        self.interface = pk.Interface('can', timeout)
 
         if baudrate == 'autobaud':
             self.autobaud(None)
@@ -117,10 +119,7 @@ class Session():
             self.data = self.pre_data
 
     def __enter__(self):
-        if not self.isopen:
-            self.interface.__enter__()
-            self.isopen = True
-
+        self.open()
         return self
 
     def open(self):
@@ -140,7 +139,8 @@ class Session():
             line: Data that will be pushed onto the queue
         '''
 
-        self.data.append(line.strip('\n\r'))
+        self.data.put_nowait(line.strip('\n\r'))
+        self.data_event.set()
 
     def autobaud(self, baudrate: int) -> str:
         '''Autodetect the bus baudrate
@@ -291,7 +291,7 @@ class Session():
         if self.isopen:
             line = self.interface.cread()[0]
             if line:
-                self.pre_data.append(line)
+                self.pre_data.put(line)
 
         return line
 
@@ -303,9 +303,6 @@ class Session():
         Returns:
             The 'thread' object of this background process
         '''
-
-        if not self.data:
-            self.data = []
 
         self.bgmon = threading.Thread(target=self.monitor)
         self.bgmon.start()
@@ -342,16 +339,14 @@ class Session():
         into the main data queue. Otherwise, just move the data.
         '''
         while self.isopen:
-            # Allow CPU to have time
-            sleep(self.poll_delay)
-
+            self.data_event.clear()
             try:
-                line = self.pre_data.pop(0)
+                line = self.pre_data.get_nowait()
                 if line:
                     self.check_action(line)
                     self.pushdata(line)
-            except IndexError:
-                continue
+            except queue.Empty:
+                self.data_event.wait()
 
         return 0
 
@@ -421,8 +416,8 @@ class Session():
             String of the data read from the port. Returns empty string if the queue is empty
         '''
         try:
-            out = self.data.pop(0)
-        except IndexError:
+            out = self.data.get()
+        except queue.Empty:
             out = ""
 
         return out
@@ -434,7 +429,13 @@ class Session():
         connection, background monitoring will need to be manually restarted with the 'bgmonitor'
         method.
         '''
+        if not self.isopen:
+            return
+
         self.isopen = False
+
+        # Wake up the registry service thread so it will exit
+        self.data_event.set()
 
         try:
             if self.bgmon.isAlive():
@@ -445,19 +446,10 @@ class Session():
         self.interface.release()
 
     def __exit__(self, etype, evalue, etraceback):
-        self.isopen = False
-
-        try:
-            if self.bgmon.isAlive():
-                sleep(.1)
-        except AttributeError:
-            sleep(.001)
-
-        self.interface.__exit__(etype, evalue, etraceback)
+        self.close()
 
     def __del__(self):
-        if self.isopen:
-            self.close()
+        self.close()
 
 
 class Reactions():

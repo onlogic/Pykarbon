@@ -18,6 +18,7 @@ Example:
 from time import sleep, time
 import re
 import threading
+import queue
 
 import pykarbon.hardware as pk
 
@@ -60,11 +61,13 @@ class Session():
     '''
     def __init__(self, timeout=.01, automon=True):
         '''Discovers hardware port name. '''
+        self.pre_data = queue.Queue()
+        self.data = queue.Queue()
+        self.isopen = False
+        self.data_event = threading.Event()
+
         self.interface = pk.Interface('terminal', timeout)
 
-        self.pre_data = []
-        self.data = []
-        self.isopen = False
 
         self.info = {
             'version':
@@ -149,10 +152,7 @@ class Session():
             self.data = self.pre_data
 
     def __enter__(self):
-        if not self.isopen:
-            self.interface.__enter__()
-            self.isopen = True
-
+        self.open()
         return self
 
     def open(self):
@@ -172,7 +172,7 @@ class Session():
             line: Data that will be pushed onto the queue
         '''
 
-        self.data.append(line)
+        self.data.put(line)
 
     def register(self, input_num, state, action, **kwargs):
         '''Automatically perform action upon receiving data_id
@@ -392,7 +392,8 @@ class Session():
             line = self.interface.cread()[0]
             dio_check = re.match(r'[0-1]{4} {0,1}[0-1]{4}', line)
             if dio_check:
-                self.pre_data.append(line[0:4] + ' ' + line[4:8])
+                self.pre_data.put_nowait(line[0:4] + ' ' + line[4:8])
+                self.data_event.set()
             elif line:
                 self.parse_line(line)
 
@@ -406,9 +407,6 @@ class Session():
         Returns:
             The 'thread' object of this background process
         '''
-
-        if not self.data:
-            self.data = []
 
         self.bgmon = threading.Thread(target=self.monitor)
         self.bgmon.start()
@@ -442,13 +440,14 @@ class Session():
         into the main data queue. Otherwise, just move the data.
         '''
         while self.isopen:
+            self.data_event.clear()
             try:
-                line = self.pre_data.pop()
+                line = self.pre_data.get_nowait()
                 if line:
                     self.pushdata(line)
                     self.check_action(line)
-            except IndexError:
-                continue
+            except queue.Empty:
+                self.data_event.wait()
 
         return 0
 
@@ -536,8 +535,8 @@ class Session():
             String of the data read from the port. Returns empty string if the queue is empty
         '''
         try:
-            out = self.data.pop(0)
-        except IndexError:
+            out = self.data.get_nowait(0)
+        except queue.Empty:
             out = ""
 
         return out
@@ -549,7 +548,13 @@ class Session():
         connection, background monitoring will need to be manually restarted with the 'bgmonitor'
         method.
         '''
+        if not self.isopen:
+            return
+
         self.isopen = False
+
+        # Wake up the registry service thread so it will exit
+        self.data_event.set()
 
         try:
             if self.bgmon.is_alive():
@@ -560,19 +565,10 @@ class Session():
         self.interface.release()
 
     def __exit__(self, etype, evalue, etraceback):
-        self.isopen = False
-
-        try:
-            if self.bgmon.is_alive():
-                sleep(.1)
-        except AttributeError:
-            sleep(.001)
-
-        self.interface.__exit__(etype, evalue, etraceback)
+        self.close()
 
     def __del__(self):
-        if self.isopen:
-            self.close()
+        self.close()
 
 
 class Reactions():
