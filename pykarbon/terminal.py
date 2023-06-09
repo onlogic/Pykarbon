@@ -63,6 +63,7 @@ class Session():
         '''Discovers hardware port name. '''
         self.pre_data = queue.Queue()
         self.data = queue.Queue()
+        self.prev_line = "1111 0000"
         self.isopen = False
 
         self.interface = pk.Interface('terminal', timeout)
@@ -437,17 +438,19 @@ class Session():
         If the receive line does have an action, perform it, and then move the data
         into the main data queue. Otherwise, just move the data.
         '''
+        prev_line = None
         while self.isopen:
             line = self.pre_data.get()
             if line is None:
                 break
             else:
                 self.pushdata(line)
-                self.check_action(line)
+                self.check_action(line, prev_line)
+                prev_line = line
 
         return 0
 
-    def check_action(self, line):
+    def check_action(self, line, prev_line=None):
         '''Check is message has an action attached, and execute if found
 
         Args:
@@ -455,13 +458,14 @@ class Session():
             prev_line: The previously known state of the bus
         '''
 
-        prev_state = self.get_previous_state(-2)
+        if prev_line is None:
+            prev_line = self.get_previous_state()
         state_map = {'1': 'high', '0': 'low'}
 
         # Check registry against current state of each digital input
         for input_num in self.registry:
             input_state = state_map[line[input_num]]
-            transition = state_map[prev_state[input_num]] != input_state
+            transition = state_map[prev_line[input_num]] != input_state
 
             action = self.registry[input_num].get(input_state)
 
@@ -483,12 +487,7 @@ class Session():
 
     def get_previous_state(self, index=-1):
         ''' Returns the previous state of the digital io '''
-        try:
-            prev_line = self.data[index]
-        except IndexError:
-            prev_line = '1111 0000'
-
-        return prev_line
+        return self.prev_line
 
     def storedata(self, filename: str, mode='a+'):
         '''Pops the entire queue and saves it to a csv.
@@ -532,6 +531,7 @@ class Session():
         '''
         try:
             out = self.data.get_nowait(0)
+            self.prev_line = out
         except queue.Empty:
             out = ""
 
