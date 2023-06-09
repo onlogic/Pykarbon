@@ -172,6 +172,8 @@ class Session():
             line: Data that will be pushed onto the queue
         '''
 
+        while self.data.qsize() > 100:
+            self.data.get_nowait()
         self.data.put(line)
 
     def register(self, input_num, state, action, **kwargs):
