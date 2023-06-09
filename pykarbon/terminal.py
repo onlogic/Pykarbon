@@ -231,7 +231,7 @@ class Session():
         '''
 
         reaction = Reactions(self.set_all_do, [input_num, state], action, **kwargs)
-        self.registry[input_num] = {state: reaction}
+        self.registry.setdefault(input_num, {}).update({state: reaction})
 
         return reaction
 
