@@ -64,7 +64,6 @@ class Session():
         self.pre_data = queue.Queue()
         self.data = queue.Queue()
         self.isopen = False
-        self.data_event = threading.Event()
 
         self.interface = pk.Interface('terminal', timeout)
 
@@ -392,8 +391,7 @@ class Session():
             line = self.interface.cread()[0]
             dio_check = re.match(r'[0-1]{4} {0,1}[0-1]{4}', line)
             if dio_check:
-                self.pre_data.put_nowait(line[0:4] + ' ' + line[4:8])
-                self.data_event.set()
+                self.pre_data.put(line[0:4] + ' ' + line[4:8])
             elif line:
                 self.parse_line(line)
 
@@ -440,14 +438,12 @@ class Session():
         into the main data queue. Otherwise, just move the data.
         '''
         while self.isopen:
-            self.data_event.clear()
-            try:
-                line = self.pre_data.get_nowait()
-                if line:
-                    self.pushdata(line)
-                    self.check_action(line)
-            except queue.Empty:
-                self.data_event.wait()
+            line = self.pre_data.get()
+            if line is None:
+                break
+            else:
+                self.pushdata(line)
+                self.check_action(line)
 
         return 0
 
@@ -554,7 +550,7 @@ class Session():
         self.isopen = False
 
         # Wake up the registry service thread so it will exit
-        self.data_event.set()
+        self.pre_data.put(None)
 
         try:
             if self.bgmon.is_alive():

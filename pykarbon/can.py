@@ -100,7 +100,6 @@ class Session():
         self.baudrate = None
         self.pre_data = queue.Queue()
         self.data = queue.Queue()
-        self.data_event = threading.Event()
         self.isopen = False
         self.bgmon = None
         self.registry = {}
@@ -139,8 +138,7 @@ class Session():
             line: Data that will be pushed onto the queue
         '''
 
-        self.data.put_nowait(line.strip('\n\r'))
-        self.data_event.set()
+        self.data.put(line.strip('\n\r'))
 
     def autobaud(self, baudrate: int) -> str:
         '''Autodetect the bus baudrate
@@ -339,14 +337,12 @@ class Session():
         into the main data queue. Otherwise, just move the data.
         '''
         while self.isopen:
-            self.data_event.clear()
-            try:
-                line = self.pre_data.get_nowait()
-                if line:
-                    self.check_action(line)
-                    self.pushdata(line)
-            except queue.Empty:
-                self.data_event.wait()
+            line = self.pre_data.get()
+            if line is None:
+                break
+            else:
+                self.check_action(line)
+                self.pushdata(line)
 
         return 0
 
@@ -416,7 +412,7 @@ class Session():
             String of the data read from the port. Returns empty string if the queue is empty
         '''
         try:
-            out = self.data.get()
+            out = self.data.get_nowait()
         except queue.Empty:
             out = ""
 
@@ -435,7 +431,7 @@ class Session():
         self.isopen = False
 
         # Wake up the registry service thread so it will exit
-        self.data_event.set()
+        self.pre_data.put(None)
 
         try:
             if self.bgmon.isAlive():
