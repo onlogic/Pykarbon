@@ -18,6 +18,7 @@ Example:
 from time import sleep, time
 import re
 import threading
+import queue
 
 import pykarbon.hardware as pk
 
@@ -60,11 +61,13 @@ class Session():
     '''
     def __init__(self, timeout=.01, automon=True):
         '''Discovers hardware port name. '''
+        self.pre_data = queue.Queue()
+        self.data = queue.Queue()
+        self.prev_line = "1111 0000"
+        self.isopen = False
+
         self.interface = pk.Interface('terminal', timeout)
 
-        self.pre_data = []
-        self.data = []
-        self.isopen = False
 
         self.info = {
             'version':
@@ -149,10 +152,7 @@ class Session():
             self.data = self.pre_data
 
     def __enter__(self):
-        if not self.isopen:
-            self.interface.__enter__()
-            self.isopen = True
-
+        self.open()
         return self
 
     def open(self):
@@ -172,7 +172,9 @@ class Session():
             line: Data that will be pushed onto the queue
         '''
 
-        self.data.append(line)
+        while self.data.qsize() > 100:
+            self.data.get_nowait()
+        self.data.put(line)
 
     def register(self, input_num, state, action, **kwargs):
         '''Automatically perform action upon receiving data_id
@@ -229,7 +231,7 @@ class Session():
         '''
 
         reaction = Reactions(self.set_all_do, [input_num, state], action, **kwargs)
-        self.registry[input_num] = {state: reaction}
+        self.registry.setdefault(input_num, {}).update({state: reaction})
 
         return reaction
 
@@ -392,7 +394,7 @@ class Session():
             line = self.interface.cread()[0]
             dio_check = re.match(r'[0-1]{4} {0,1}[0-1]{4}', line)
             if dio_check:
-                self.pre_data.append(line[0:4] + ' ' + line[4:8])
+                self.pre_data.put(line[0:4] + ' ' + line[4:8])
             elif line:
                 self.parse_line(line)
 
@@ -406,9 +408,6 @@ class Session():
         Returns:
             The 'thread' object of this background process
         '''
-
-        if not self.data:
-            self.data = []
 
         self.bgmon = threading.Thread(target=self.monitor)
         self.bgmon.start()
@@ -441,18 +440,19 @@ class Session():
         If the receive line does have an action, perform it, and then move the data
         into the main data queue. Otherwise, just move the data.
         '''
+        prev_line = None
         while self.isopen:
-            try:
-                line = self.pre_data.pop()
-                if line:
-                    self.pushdata(line)
-                    self.check_action(line)
-            except IndexError:
-                continue
+            line = self.pre_data.get()
+            if line is None:
+                break
+            else:
+                self.pushdata(line)
+                self.check_action(line, prev_line)
+                prev_line = line
 
         return 0
 
-    def check_action(self, line):
+    def check_action(self, line, prev_line=None):
         '''Check is message has an action attached, and execute if found
 
         Args:
@@ -460,13 +460,14 @@ class Session():
             prev_line: The previously known state of the bus
         '''
 
-        prev_state = self.get_previous_state(-2)
+        if prev_line is None:
+            prev_line = self.get_previous_state()
         state_map = {'1': 'high', '0': 'low'}
 
         # Check registry against current state of each digital input
         for input_num in self.registry:
             input_state = state_map[line[input_num]]
-            transition = state_map[prev_state[input_num]] != input_state
+            transition = state_map[prev_line[input_num]] != input_state
 
             action = self.registry[input_num].get(input_state)
 
@@ -488,12 +489,7 @@ class Session():
 
     def get_previous_state(self, index=-1):
         ''' Returns the previous state of the digital io '''
-        try:
-            prev_line = self.data[index]
-        except IndexError:
-            prev_line = '1111 0000'
-
-        return prev_line
+        return self.prev_line
 
     def storedata(self, filename: str, mode='a+'):
         '''Pops the entire queue and saves it to a csv.
@@ -536,8 +532,9 @@ class Session():
             String of the data read from the port. Returns empty string if the queue is empty
         '''
         try:
-            out = self.data.pop(0)
-        except IndexError:
+            out = self.data.get_nowait(0)
+            self.prev_line = out
+        except queue.Empty:
             out = ""
 
         return out
@@ -549,7 +546,13 @@ class Session():
         connection, background monitoring will need to be manually restarted with the 'bgmonitor'
         method.
         '''
+        if not self.isopen:
+            return
+
         self.isopen = False
+
+        # Wake up the registry service thread so it will exit
+        self.pre_data.put(None)
 
         try:
             if self.bgmon.is_alive():
@@ -560,19 +563,10 @@ class Session():
         self.interface.release()
 
     def __exit__(self, etype, evalue, etraceback):
-        self.isopen = False
-
-        try:
-            if self.bgmon.is_alive():
-                sleep(.1)
-        except AttributeError:
-            sleep(.001)
-
-        self.interface.__exit__(etype, evalue, etraceback)
+        self.close()
 
     def __del__(self):
-        if self.isopen:
-            self.close()
+        self.close()
 
 
 class Reactions():
