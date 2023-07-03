@@ -32,7 +32,7 @@ def check_file(filename):
 
 
 def update_firmware(binary_file):
-    ''' Update the K300 firware with specified binary update file '''
+    ''' Update the K300 firmware with specified binary update file '''
 
     print("Starting update...")
 
