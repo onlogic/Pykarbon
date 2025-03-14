@@ -532,7 +532,7 @@ class Session():
             String of the data read from the port. Returns empty string if the queue is empty
         '''
         try:
-            out = self.data.get_nowait(0)
+            out = self.data.get_nowait()
             self.prev_line = out
         except queue.Empty:
             out = ""
