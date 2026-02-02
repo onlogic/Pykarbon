@@ -3,7 +3,7 @@ The Pykarbon Project
 ====================
 
 The Pykarbon module provides a set of tools for interfacing with hardware devices on
-OnLogic's 'Karbon' series rugged PCs. These interfaces include the onboard CAN bus,
+OnLogic's 'Karbon' K300 and K700 rugged PCs. These interfaces include the onboard CAN bus,
 Digital IO, automotive features, and a few other hardware devices. There are several benefits to leveraging Pykarbon:
 
 - You can start testing and developing right out of the box -- setting up a Karbon with Pykarbon and sending some test messages over CAN takes only a couple of minutes.
